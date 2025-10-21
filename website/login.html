@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Login - UCMS{% endblock %}
+
+{% block content %}
+    <div class="max-w-md mx-auto card">
+        <h2 class="text-3xl font-bold text-gray-900 mb-6 text-center">Student Login</h2>
+        <form id="login-form">
+            <div class="mb-4">
+                <label for="student_id_num" class="block text-sm font-medium text-gray-700">Student ID (e.g., S1001A)</label>
+                <input type="text" id="student_id_num" name="student_id_num" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="mb-6">
+                <label for="password" class="block text-sm font-medium text-gray-700">Password (Any)</label>
+                <input type="password" id="password" name="password" value="password" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <button type="submit" class="btn-primary w-full">Login</button>
+        </form>
+        <p class="mt-4 text-sm text-gray-500 text-center">Use IDs like <strong>S1001A</strong>, <strong>S1002B</strong>, or <strong>S1003C</strong> for demo login.</p>
+    </div>
+    
+    <script>
+        // Move login handling logic from the old SPA file
+        document.getElementById('login-form').addEventListener('submit', handleLogin);
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const form = event.target;
+            const studentIdNum = form.student_id_num.value.toUpperCase();
+
+            const students = await apiFetch('/api/students');
+            if (!students) return;
+
+            const student = students.find(s => s.student_id_num === studentIdNum);
+
+            if (student) {
+                // Store state in localStorage and redirect
+                localStorage.setItem('ucms_student_id', student.id);
+                localStorage.setItem('ucms_student_name', student.name);
+                showStatusMessage(`Welcome, ${student.name}! Redirecting to dashboard...`, 'success');
+                window.location.href = '/dashboard';
+            } else {
+                showStatusMessage('Login Failed: Invalid Student ID.', 'error');
+            }
+        }
+    </script>
+{% endblock %}

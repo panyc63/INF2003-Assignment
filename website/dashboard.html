@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - UCMS{% endblock %}
+
+{% block content %}
+    <div class="max-w-7xl flex-grow mx-auto" id="dashboard-content">
+        <div class="mb-6">
+            <h2 class="text-3xl font-bold text-gray-900 mb-2">Student Dashboard</h2>
+            <p class="text-xl text-blue-600" id="welcome-message">Welcome back, loading...</p>
+        </div>
+
+        <div id="student-info-section" class="grid md:grid-cols-2 gap-6 mb-8">
+            <div class="card bg-yellow-50">
+                <h3 class="text-xl font-semibold mb-3">Your Enrollments</h3>
+                <div id="enrollment-list" class="space-y-2 text-sm">Loading...</div>
+            </div>
+            <div class="card">
+                <h3 class="text-xl font-semibold mb-3">Search Courses</h3>
+                <form id="course-search-form" class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+                    <input type="text" id="search-query" placeholder="e.g., Core classes, Alan Turing, CS101" class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" required>
+                    <button type="submit" class="btn-primary flex-shrink-0">Semantic Search</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 class="text-2xl font-semibold mb-4 border-b pb-2">Available Courses</h3>
+            <div id="course-results-list" class="divide-y divide-gray-200">
+                <p class="text-center text-gray-500 p-6">Use the search bar above to find courses, or click "Show All" to browse.</p>
+                <button class="btn-secondary w-full mt-4" onclick="handleShowAllCourses()">Show All Courses</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check if logged in before loading dashboard data
+            if (!currentState.loggedIn) {
+                // Should have been redirected by base.html, but ensure safety
+                return;
+            }
+            
+            // Set welcome message using the global state
+            document.getElementById('welcome-message').textContent = 
+                `Welcome back, ${currentState.studentName} (ID: ${currentState.studentId})`;
+            
+            loadStudentEnrollments();
+            document.getElementById('course-search-form').addEventListener('submit', handleCourseSearch);
+            // Show all courses on load for convenience
+            handleShowAllCourses(); 
+        });
+
+
+        async function loadStudentEnrollments() {
+            const enrollmentList = document.getElementById('enrollment-list');
+            const data = await apiFetch(`/api/student/${currentState.studentId}/enrollments`);
+            
+            if (!data || data.length === 0) {
+                enrollmentList.innerHTML = '<p class="text-gray-500">You are not currently enrolled in any courses.</p>';
+                return;
+            }
+
+            enrollmentList.innerHTML = data.map(course => `
+                <div class="p-2 border border-yellow-200 bg-yellow-100 rounded-md">
+                    <strong class="text-blue-800">${course.course_id} - ${course.title}</strong>
+                    <span class="text-sm block">Taught by: ${course.instructor_name} (${course.credits} Credits)</span>
+                </div>
+            `).join('');
+        }
+
+        async function handleShowAllCourses() {
+            const results = await apiFetch('/api/courses');
+            if (results) {
+                displayCourseResults(results);
+            }
+        }
+
+        async function handleCourseSearch(event) {
+            event.preventDefault();
+            const query = document.getElementById('search-query').value;
+            const results = await apiFetch('/api/search', 'POST', { query: query });
+            
+            if (results) {
+                displayCourseResults(results);
+            }
+        }
+        
+        function displayCourseResults(courses) {
+            const resultsList = document.getElementById('course-results-list');
+            if (!resultsList) return;
+
+            if (courses.length === 0) {
+                resultsList.innerHTML = `<p class="text-center text-red-500 p-6">No courses matched your query or filter criteria.</p>`;
+                return;
+            }
+            
+            resultsList.innerHTML = courses.map(course => {
+                const isFull = course.slots_left <= 0;
+                const buttonHtml = isFull 
+                    ? `<button class="btn-secondary bg-red-100 text-red-700 cursor-not-allowed" disabled>Full</button>`
+                    : `<button class="btn-primary" onclick="handleEnroll('${course.id}', '${course.title}')">Apply</button>`;
+
+                return `
+                    <div class="course-item flex justify-between items-center flex-wrap">
+                        <div class="flex-grow min-w-0 pr-4">
+                            <h4 class="text-lg font-bold text-blue-800">${course.title} (${course.id})</h4>
+                            <p class="text-sm text-gray-700">${course.description}</p>
+                            <p class="text-xs text-gray-500 mt-1">Prereqs: ${course.prerequisites || 'None'}</p>
+                        </div>
+                        <div class="text-right space-y-1 mt-2 sm:mt-0">
+                            <p class="text-sm font-semibold">Taught by: ${course.instructor_name}</p>
+                            <p class="text-sm ${isFull ? 'text-red-600' : 'text-green-600'}">
+                                ${course.slots_left} / ${course.max_intake || 'N/A'} Slots Left
+                            </p>
+                            ${buttonHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Add the "Show All" button back after search/display
+            resultsList.innerHTML += `<button class="btn-secondary w-full mt-4" onclick="handleShowAllCourses()">Show All Courses</button>`;
+        }
+
+        async function handleEnroll(courseId, courseTitle) {
+            const data = await apiFetch('/api/enroll', 'POST', {
+                student_id: currentState.studentId,
+                course_id: courseId
+            });
+
+            if (data && data.message) {
+                showStatusMessage(data.message, 'success');
+                // Refresh enrollments and the course list to show updated slot count
+                loadStudentEnrollments();
+                handleShowAllCourses(); 
+            }
+        }
+    </script>
+{% endblock %}

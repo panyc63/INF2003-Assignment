@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}Edukate - Online Education{% endblock %}
+
+{% block page_title %}Edukate Home{% endblock %}
+
+{% block content %}
+
+    <div class="container-fluid py-5">
+        <div class="container py-5">
+            <div class="row">
+                <div class="col-lg-7 mb-5 mb-lg-0">
+                    <div class="section-title position-relative mb-4">
+                        <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Why Choose Us?</h6>
+                        <h1 class="display-4">Best Courses for Your Future</h1>
+                    </div>
+                    <p class="mb-4 pb-2">Aliquyam accusam clita nonumy ipsum sit sea amet ipsum lorem diam
+                        stet et. Eos nonumy eirmod eirmod elitr rebum clita no sed dubium amet sed ipsum et
+                        est stet-.</p>
+                    <div class="d-flex mb-3">
+                        <div class="btn-icon bg-primary mr-4">
+                            <i class="fa fa-2x fa-graduation-cap text-white"></i>
+                        </div>
+                        <div class="mt-n1">
+                            <h4>Skilled Instructors</h4>
+                            <p>Labore rebum sit at nonumy rebum nonumy rebum erat lorem ipsum dolor sit vero et. Ipsum nonumy ipsum</p>
+                        </div>
+                    </div>
+                    <div class="d-flex mb-3">
+                        <div class="btn-icon bg-secondary mr-4">
+                            <i class="fa fa-2x fa-certificate text-white"></i>
+                        </div>
+                        <div class="mt-n1">
+                            <h4>International Certificate</h4>
+                            <p>Labore rebum sit at nonumy rebum nonumy rebum erat lorem ipsum dolor sit vero et. Ipsum nonumy ipsum</p>
+                        </div>
+                    </div>
+                    <div class="d-flex">
+                        <div class="btn-icon bg-warning mr-4">
+                            <i class="fa fa-2x fa-book-reader text-white"></i>
+                        </div>
+                        <div class="mt-n1">
+                            <h4>Online Classes</h4>
+                            <p class="m-0">Labore rebum sit at nonumy rebum nonumy rebum erat lorem ipsum dolor sit vero et. Ipsum nonumy ipsum</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-5" style="min-height: 500px;">
+                    <div class="position-relative h-100">
+                        <img class="position-absolute w-100 h-100" src="{{ url_for('static', filename='img/feature.jpg') }}" style="object-fit: cover;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="container-fluid py-5">
+        <div class="container py-5">
+            <div class="row align-items-center">
+                <div class="col-lg-5 mb-5 mb-lg-0">
+                    <img class="img-fluid rounded mb-4 mb-lg-0" src="{{ url_for('static', filename='img/about.jpg') }}" alt="">
+                </div>
+                <div class="col-lg-7">
+                    <div class="section-title position-relative mb-4">
+                        <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">About Us</h6>
+                        <h1 class="display-4">First Choice For Online Education Anywhere</h1>
+                    </div>
+                    <p>Tempor erat elitr at rebum at at clita aliquyam consetetur. Diam dolor diam ipsum et, tempor et
+                        et
+                        diam rebum et sit.
+                        Consetetur et est nonumy labore diam. Sadipscing et at at labore, labore rebum amet sit et
+                        labore,
+                        stet
+                        magna ipsum consetetur at. Nonumy sed clita eos eirmod
+                        eirmod amet sit ipsum et. Id sed ipsum sit</p>
+                    <div class="row pt-3 mx-0">
+                        <div class="col-3 px-0">
+                            <div class="bg-success text-center p-4">
+                                <h1 class="text-white" data-toggle="counter-up">123</h1>
+                                <h6 class="text-uppercase text-white">Available<span class="d-block">Subjects</span></h6>
+                            </div>
+                        </div>
+                        <div class="col-3 px-0">
+                            <div class="bg-primary text-center p-4">
+                                <h1 class="text-white" data-toggle="counter-up">999</h1>
+                                <h6 class="text-uppercase text-white">Online<span class="d-block">Courses</span></h6>
+                            </div>
+                        </div>
+                        <div class="col-3 px-0">
+                            <div class="bg-secondary text-center p-4">
+                                <h1 class="text-white" data-toggle="counter-up">420</h1>
+                                <h6 class="text-uppercase text-white">Skilled<span class="d-block">Instructors</span></h6>
+                            </div>
+                        </div>
+                        <div class="col-3 px-0">
+                            <div class="bg-warning text-center p-4">
+                                <h1 class="text-white" data-toggle="counter-up">1590</h1>
+                                <h6 class="text-uppercase text-white">Happy<span class="d-block">Students</span></h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="container-fluid py-5">
+        <div class="container py-5">
+            <div class="row mx-0 justify-content-center">
+                <div class="col-lg-8">
+                    <div class="section-title text-center position-relative mb-5">
+                        <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Our Courses</h6>
+                        <h1 class="display-4">Checkout New Releases Of Our Courses</h1>
+                    </div>
+                </div>
+            </div>
+            <div class="owl-carousel courses-carousel">
+                <div class="courses-list-item position-relative d-block overflow-hidden mb-2" style="margin-right: 10px;">
+                    <a href="{{ url_for('detail') }}">
+                        <img class="img-fluid" src="{{ url_for('static', filename='img/courses-1.jpg') }}" alt="">
+                        <div class="courses-text">
+                            <h4 class="text-center text-white px-3">Web design & development courses for beginners</h4>
+                            <div class="border-top w-100 mt-3">
+                                <div class="d-flex justify-content-between p-4">
+                                    <span class="text-white"><i class="fa fa-user mr-2"></i>Jhon Doe</span>
+                                    <span class="text-white"><i class="fa fa-star mr-2"></i>4.5 <small>(250)</small></span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="courses-list-item position-relative d-block overflow-hidden mb-2" style="margin-right: 10px;">
+                    <a href="{{ url_for('detail') }}">
+                        <img class="img-fluid" src="{{ url_for('static', filename='img/courses-2.jpg') }}" alt="">
+                        <div class="courses-text">
+                            <h4 class="text-center text-white px-3">Web design & development courses for beginners</h4>
+                            <div class="border-top w-100 mt-3">
+                                <div class="d-flex justify-content-between p-4">
+                                    <span class="text-white"><i class="fa fa-user mr-2"></i>Jhon Doe</span>
+                                    <span class="text-white"><i class="fa fa-star mr-2"></i>4.5 <small>(250)</small></span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="courses-list-item position-relative d-block overflow-hidden mb-2" style="margin-right: 10px;">
+                    <a href="{{ url_for('detail') }}">
+                        <img class="img-fluid" src="{{ url_for('static', filename='img/courses-3.jpg') }}" alt="">
+                        <div class="courses-text">
+                            <h4 class="text-center text-white px-3">Web design & development courses for beginners</h4>
+                            <div class="border-top w-100 mt-3">
+                                <div class="d-flex justify-content-between p-4">
+                                    <span class="text-white"><i class="fa fa-user mr-2"></i>Jhon Doe</span>
+                                    <span class="text-white"><i class="fa fa-star mr-2"></i>4.5 <small>(250)</small></span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="container-fluid py-5">
+        <div class="container pt-5 pb-3">
+            <div class="row mx-0 justify-content-center">
+                <div class="col-lg-8">
+                    <div class="section-title text-center position-relative mb-5">
+                        <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Our Instructors</h6>
+                        <h1 class="display-4">Meet Our Certified & Experienced Instructors</h1>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-lg-3 col-md-6 pb-4">
+                    <div class="team-item">
+                        <img class="img-fluid mb-4" src="{{ url_for('static', filename='img/team-1.jpg') }}" alt="">
+                        <div class="bg-light p-4">
+                            <h4 class="mb-3">Jhon Doe</h4>
+                            <p class="m-0">Web Developer</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 pb-4">
+                    <div class="team-item">
+                        <img class="img-fluid mb-4" src="{{ url_for('static', filename='img/team-2.jpg') }}" alt="">
+                        <div class="bg-light p-4">
+                            <h4 class="mb-3">Jhon Doe</h4>
+                            <p class="m-0">Web Developer</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 pb-4">
+                    <div class="team-item">
+                        <img class="img-fluid mb-4" src="{{ url_for('static', filename='img/team-3.jpg') }}" alt="">
+                        <div class="bg-light p-4">
+                            <h4 class="mb-3">Jhon Doe</h4>
+                            <p class="m-0">Web Developer</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 pb-4">
+                    <div class="team-item">
+                        <img class="img-fluid mb-4" src="{{ url_for('static', filename='img/team-4.jpg') }}" alt="">
+                        <div class="bg-light p-4">
+                            <h4 class="mb-3">Jhon Doe</h4>
+                            <p class="m-0">Web Developer</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="container-fluid bg-image py-5" style="margin: 90px 0;">
+        <div class="container py-5">
+            <div class="row align-items-center">
+                <div class="col-md-5 mb-5 mb-md-0">
+                    <div class="section-title position-relative mb-4">
+                        <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Testimonial</h6>
+                        <h1 class="display-4">What Students Say About Our Online Courses</h1>
+                    </div>
+                    <p class="m-0">Dolor et eos labore, stet justo sed est sed. Diam sed sed dolor stet amet eirmod eos labore diam
+                        ipsum.
+                        Est nonumy silta eirmod nonumy eirmod aliquyam.</p>
+                </div>
+                <div class="col-md-7">
+                    <div class="owl-carousel testimonial-carousel">
+                        <div class="bg-white p-5 text-center">
+                            <img class="img-fluid mx-auto mb-4" src="{{ url_for('static', filename='img/testimonial-1.jpg') }}" alt="">
+                            <p>Nonumy ipsum amet tempor
+                                amet.
+                                Clita nonumy dolor erat et
+                                elitr nonumy stet
+                                tempor et ut.
+                                Dolor et eos labore, stet justo sed est sed. Diam sed sed dolor stet amet eirmod eos labore diam
+                                ipsum.
+                                Est nonumy silta
+                                eirmod nonumy eirmod aliquyam.</p>
+                            <h5 class="mb-0">Student Name</h5>
+                            <span class="text-primary">Web Developer</span>
+                        </div>
+                        <div class="bg-white p-5 text-center">
+                            <img class="img-fluid mx-auto mb-4" src="{{ url_for('static', filename='img/testimonial-2.jpg') }}" alt="">
+                            <p>Nonumy ipsum amet tempor
+                                amet.
+                                Clita nonumy dolor erat et
+                                elitr nonumy stet
+                                tempor et ut.
+                                Dolor et eos labore, stet justo sed est sed. Diam sed sed dolor stet amet eirmod eos labore diam
+                                ipsum.
+                                Est nonumy silta
+                                eirmod nonumy eirmod aliquyam.</p>
+                            <h5 class="mb-0">Student Name</h5>
+                            <span class="text-primary">Web Developer</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endblock %}
