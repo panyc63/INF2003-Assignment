@@ -23,104 +23,128 @@
         #status-message-container { min-height: 50px; }
     </style>
     
-    <!-- JavaScript Utility Functions - Must be in base for all pages -->
-    <script>
-        // Global state container (replaces JS routing)
-        let currentState = {
-            loggedIn: false,
-            studentId: null,
-            studentName: '',
-        };
+  <script>
+    let currentState = {
+        loggedIn: false,
+        userId: null,
+        userRole: '',
+        userName: '', 
+        studentId: null, 
+        instructorId: null,
+    };
+    
+    function updateNavAndState() {
+        const authLinkText = document.getElementById('auth-link-text');
         
-        // Function to update the navigation bar based on state
-        function updateNavAndState() {
-            const authLinkText = document.getElementById('auth-link-text');
-            const studentId = localStorage.getItem('ucms_student_id');
-            const studentName = localStorage.getItem('ucms_student_name');
+        // **CRITICAL: Using the UN-PREFIXED keys your original code uses**
+        const userId = localStorage.getItem('user_id');
+        const userRole = localStorage.getItem('user_role');
+        const userName = localStorage.getItem('user_name'); 
+        
+        // Also load the role-specific IDs which were missing in the original logic:
+        const studentId = localStorage.getItem('student_id');
+        const instructorId = localStorage.getItem('instructor_id');
 
-            if (studentId && studentName) {
-                currentState.loggedIn = true;
-                currentState.studentId = parseInt(studentId);
-                currentState.studentName = studentName;
-                authLinkText.textContent = `Logout (${currentState.studentName})`;
-            } else {
-                currentState.loggedIn = false;
-                currentState.studentId = null;
-                currentState.studentName = '';
+        // Determine Logged-In State
+        if (userId && userRole) {
+            currentState.loggedIn = true;
+            currentState.userId = parseInt(userId);
+            currentState.userRole = userRole;
+            currentState.userName = userName;
+            
+            // Populate the role-specific IDs in the global state
+            currentState.studentId = studentId ? parseInt(studentId) : null;
+            currentState.instructorId = instructorId ? parseInt(instructorId) : null;
+            
+            if (authLinkText) {
+                authLinkText.textContent = `Logout (${currentState.userName} - ${userRole.toUpperCase()})`;
+            }
+        } else {
+            // User not logged in
+            currentState.loggedIn = false;
+            if (authLinkText) {
                 authLinkText.textContent = 'Login';
             }
+        }
+
+        // Redirect Logic
+        const path = window.location.pathname;
+        let intendedDashboard = (currentState.userRole === 'instructor') ? '/instructor_dashboard' : '/dashboard';
+
+        if (currentState.loggedIn && (path === '/' || path === '/login')) {
+            window.location.href = intendedDashboard;
+        } 
+        else if (!currentState.loggedIn && (path === '/dashboard' || path === '/instructor_dashboard')) {
+            window.location.href = '/login';
+        }
+    }
+
+    // --- Logout Function (Made global for HTML onclick) ---
+    window.handleAuthClick = function() {
+        if (currentState.loggedIn) {
+            // Clear ALL relevant keys (including the role-specific ones)
+            localStorage.removeItem('user_id');
+            localStorage.removeItem('user_role');
+            localStorage.removeItem('user_name');
+            localStorage.removeItem('student_id');      // Clear role-specific ID
+            localStorage.removeItem('instructor_id');   // Clear role-specific ID
+             
+            showStatusMessage('Logged out successfully.', 'success');
+            window.location.href = '/login'; 
+        } else {
+            window.location.href = '/login';
+        }
+    }
+    
+    // Utility functions (keeping them global as they are used by login.html and dashboard.html)
+    function showStatusMessage(message, type = 'info') {
+        const container = document.getElementById('status-message-container');
+        if (!container) return;
+
+        // ... (The implementation of showStatusMessage remains the same)
+        const bgColor = type === 'success' ? 'bg-green-100 border-green-400 text-green-700' :
+                        type === 'error' ? 'bg-red-100 border-red-400 text-red-700' :
+                        'bg-blue-100 border-blue-400 text-blue-700';
+
+        container.innerHTML = `
+            <div class="border ${bgColor} px-4 py-3 rounded relative mb-4" role="alert">
+                <strong class="font-bold">${type.toUpperCase()}!</strong>
+                <span class="block sm:inline ml-2">${message}</span>
+            </div>
+        `;
+    }
+
+    async function apiFetch(url, method = 'GET', body = null) {
+         try {
+            const options = {
+                method: method,
+                headers: { 'Content-Type': 'application/json' }
+            };
+            if (body) { options.body = JSON.stringify(body); }
+
+            const response = await fetch(url, options);
+            const contentType = response.headers.get("content-type");
             
-            // Redirect to dashboard if logged in and on login/home page, or vice versa
-            if (currentState.loggedIn && (window.location.pathname === '/' || window.location.pathname === '/login')) {
-                // If logged in, automatically go to the dashboard
-                window.location.href = '/dashboard';
-            } else if (!currentState.loggedIn && window.location.pathname === '/dashboard') {
-                // If not logged in, you must be on a public page (home or about)
-                window.location.href = '/login';
+            if (!contentType || !contentType.includes("application/json")) {
+                if (response.ok) return { message: 'Action successful' };
+                throw new Error(`Server returned status ${response.status}`);
             }
-        }
 
-        function handleAuthClick() {
-            if (currentState.loggedIn) {
-                localStorage.removeItem('ucms_student_id');
-                localStorage.removeItem('ucms_student_name');
-                showStatusMessage('Logged out successfully.', 'success');
-                // Redirect to login page upon logout
-                window.location.href = '/login'; 
-            } else {
-                // Go to login page if not logged in
-                window.location.href = '/login';
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || 'An unknown error occurred.');
             }
+            return data;
+
+        } catch (error) {
+            console.error('API Error:', error);
+            showStatusMessage(`${error.message}`, 'error');
+            return null;
         }
+    }
 
-        // Message Display Utility (remains the same)
-        function showStatusMessage(message, type = 'info') {
-            const container = document.getElementById('status-message-container');
-            if (!container) return;
-
-            const bgColor = type === 'success' ? 'bg-green-100 border-green-400 text-green-700' :
-                            type === 'error' ? 'bg-red-100 border-red-400 text-red-700' :
-                            'bg-blue-100 border-blue-400 text-blue-700';
-
-            container.innerHTML = `
-                <div class="border ${bgColor} px-4 py-3 rounded relative mb-4" role="alert">
-                    <strong class="font-bold">${type.toUpperCase()}!</strong>
-                    <span class="block sm:inline ml-2">${message}</span>
-                </div>
-            `;
-        }
-
-        // Fetch Utilities (remains the same)
-        async function apiFetch(url, method = 'GET', body = null) {
-            try {
-                const options = {
-                    method: method,
-                    headers: { 'Content-Type': 'application/json' }
-                };
-                if (body) { options.body = JSON.stringify(body); }
-
-                const response = await fetch(url, options);
-                const contentType = response.headers.get("content-type");
-                
-                if (!contentType || !contentType.includes("application/json")) {
-                    if (response.ok) return { message: 'Action successful' };
-                    throw new Error(`Server returned status ${response.status}`);
-                }
-
-                const data = await response.json();
-                
-                if (!response.ok) {
-                    throw new Error(data.message || 'An unknown error occurred.');
-                }
-                return data;
-
-            } catch (error) {
-                console.error('API Error:', error);
-                showStatusMessage(`API Error: ${error.message}`, 'error');
-                return null;
-            }
-        }
-
+        // Run the update only after the DOM is loaded
         document.addEventListener('DOMContentLoaded', updateNavAndState);
     </script>
     
@@ -128,23 +152,19 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
-    <div id="status-message-container">
-        <header class="bg-white shadow-md sticky top-0 z-10">
-            <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-                <h1 class="text-2xl font-bold text-blue-800"><a href="/">UCMS</a></h1>
-                <div class="flex space-x-6">
-                    <a href="/" class="nav-link">Home</a>
-                    <a href="/about" class="nav-link">About Us</a>
-                    <a href="/course" class="nav-link">Courses</a>
-                    <a href="/login" class="nav-link" id="auth-link-text" onclick="handleAuthClick()">Courses</a>
-
-                </div>
-            </nav>
-        </header>
-    </div>
+    <header class="bg-white shadow-md sticky top-0 z-10">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-blue-800"><a href="/">UCMS</a></h1>
+            <div class="flex space-x-6">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/about" class="nav-link">About Us</a>
+                <a href="/course" class="nav-link">Courses</a>
+                <a href="/login" class="nav-link" id="auth-link-text" onclick="handleAuthClick()">Login</a>
+            </div>
+        </nav>
+    </header>
 
 
-    <!-- Main Content Area -->
     <main class="px-4 sm:px-6 lg:px-8 py-10 w-full">
         {% block content %}{% endblock %}
     </main>
@@ -164,6 +184,7 @@
     <script src="{{ url_for('static', filename='lib/owlcarousel/owl.carousel.min.js') }}"></script>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
 
 </body>
 </html>

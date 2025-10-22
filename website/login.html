@@ -3,44 +3,78 @@
 {% block title %}Login - UCMS{% endblock %}
 
 {% block content %}
-    <div class="max-w-md mx-auto card">
-        <h2 class="text-3xl font-bold text-gray-900 mb-6 text-center">Student Login</h2>
+    <div id="status-message-container" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-4">
+        </div>
+
+    <div class="mt-4 max-w-md mx-auto">
+        <h2 class="text-3xl font-bold text-gray-900 mb-6 text-center">User Login</h2>
         <form id="login-form">
             <div class="mb-4">
-                <label for="student_id_num" class="block text-sm font-medium text-gray-700">Student ID (e.g., S1001A)</label>
-                <input type="text" id="student_id_num" name="student_id_num" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500">
+                <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                <input type="email" id="email" name="email" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500">
             </div>
             <div class="mb-6">
-                <label for="password" class="block text-sm font-medium text-gray-700">Password (Any)</label>
+                <label for="password" class="block text-sm font-medium text-gray-700">Password (Always 'password')</label>
                 <input type="password" id="password" name="password" value="password" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500">
             </div>
             <button type="submit" class="btn-primary w-full">Login</button>
         </form>
-        <p class="mt-4 text-sm text-gray-500 text-center">Use IDs like <strong>S1001A</strong>, <strong>S1002B</strong>, or <strong>S1003C</strong> for demo login.</p>
+        <p class="mt-4 text-sm text-gray-500 text-center">Use student emails like <strong>e.vance@uni.edu</strong> or <strong>k.rix@uni.edu</strong> with password 'password'.</p>
+        <p class="mt-2 text-sm text-gray-500 text-center">Instructors can use <strong>alan.turing@uni.edu</strong> to log in.</p>
     </div>
     
     <script>
-        // Move login handling logic from the old SPA file
-        document.getElementById('login-form').addEventListener('submit', handleLogin);
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('login-form').addEventListener('submit', handleLogin);
+        });
 
         async function handleLogin(event) {
             event.preventDefault();
             const form = event.target;
-            const studentIdNum = form.student_id_num.value.toUpperCase();
+            const email = form.email.value.toLowerCase();
+            const password = form.password.value;
 
-            const students = await apiFetch('/api/students');
-            if (!students) return;
+            localStorage.clear();
 
-            const student = students.find(s => s.student_id_num === studentIdNum);
+            const allUsers = await apiFetch('/api/users');
+            if (!allUsers) return;
 
-            if (student) {
-                // Store state in localStorage and redirect
-                localStorage.setItem('ucms_student_id', student.id);
-                localStorage.setItem('ucms_student_name', student.name);
-                showStatusMessage(`Welcome, ${student.name}! Redirecting to dashboard...`, 'success');
-                window.location.href = '/dashboard';
+            const user = allUsers.find(u => u.email.toLowerCase() === email);
+
+            if (user && password === 'password') { 
+                
+                let redirectUrl = '/dashboard';
+                let roleSpecificId = null;
+
+                // --- Fetch Role-Specific ID ---
+                if (user.role === 'student') {
+                    const studentData = await apiFetch(`/api/students/${user.id}`); 
+                    if (studentData) {
+                        roleSpecificId = studentData.id; 
+                        // Save the role-specific ID using the UN-PREFIXED KEY
+                        localStorage.setItem('student_id', roleSpecificId); 
+                        redirectUrl = '/dashboard';
+                    }
+                } else if (user.role === 'instructor') {
+                    const instructorData = await apiFetch(`/api/instructors/${user.id}`); 
+                    if (instructorData) {
+                         roleSpecificId = instructorData.id; 
+                         // Save the role-specific ID using the UN-PREFIXED KEY
+                         localStorage.setItem('instructor_id', roleSpecificId); 
+                         redirectUrl = '/instructor_dashboard'; 
+                    }
+                }
+    
+                // --- 1. Store Universal State Keys (UN-PREFIXED) ---
+                localStorage.setItem('user_id', user.id); 
+                localStorage.setItem('user_role', user.role);
+                localStorage.setItem('user_name', user.name);
+                
+                showStatusMessage(`Welcome, ${user.name} (${user.role})! Redirecting...`, 'success');
+                window.location.href = redirectUrl;
+
             } else {
-                showStatusMessage('Login Failed: Invalid Student ID.', 'error');
+                showStatusMessage('Login Failed: Invalid Email or Password.', 'error');
             }
         }
     </script>
