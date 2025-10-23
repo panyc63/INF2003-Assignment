@@ -101,7 +101,6 @@ class Enrollment(db.Model):
     enrolled_at = db.Column(db.DateTime, default=datetime.utcnow) 
     final_grade = db.Column(db.String(2)) 
     status = db.Column(db.String(20), default='Enrolled')
-    
     student = db.relationship("Student", back_populates="enrollments")
     course = db.relationship("Course", back_populates="enrollments")
 

@@ -186,7 +186,7 @@ def semantic_search(query):
     all_courses = Course.query.all()
     
     for course in all_courses:
-        instructor_name = _get_instructor_full_name(course)
+        instructor_name = get_instructor_full_name(course)
         course_text = f"{course.course_id} {course.course_name} {course.description} {course.course_code} {instructor_name}".lower()
         
         score = 0
@@ -215,7 +215,7 @@ def semantic_search(query):
     results.sort(key=lambda x: x['relevance_score'], reverse=True)
     return results
 
-# Fetches all courses with enhanced details.
+# Fetches all courses with details.
 def get_course_data():
     courses = Course.query.all()
     return [
@@ -230,7 +230,7 @@ def get_course_data():
             "max_capacity": c.max_capacity,
             "current_enrollment": c.current_enrollment,
             "slots_left": c.max_capacity - (c.current_enrollment or 0),
-            "instructor_name": _get_instructor_full_name(c)
+            "instructor_name": get_instructor_full_name(c)
         }
         for c in courses
     ]
@@ -299,8 +299,8 @@ def get_instructor_details_by_user_id(user_id):
         }
     return None
 
-# Safely retrieves the instructor's full name, handling missing records.
-def _get_instructor_full_name(course):
+# Retrieves the instructor's full name, handling missing records.
+def get_instructor_full_name(course):
     if course.instructor and course.instructor.user:
         return f"{course.instructor.user.first_name} {course.instructor.user.last_name}"
     return "TBA"
@@ -315,7 +315,7 @@ def get_student_enrollments(student_id):
     results = []
     for enrollment in enrollments:
         course = enrollment.course
-        instructor_name = _get_instructor_full_name(course)
+        instructor_name = get_instructor_full_name(course)
         
         results.append({
             "course_id": course.course_id,

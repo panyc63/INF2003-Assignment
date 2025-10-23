@@ -11,25 +11,24 @@ from services import (
     get_instructor_courses,
     get_students_in_course
 )
-
-# Define the Blueprint for the API endpoints with a prefix
+#api blueprint
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
+# Retrieve all course data including instructor name and slots remaining.
 @api_bp.route('/courses', methods=['GET'])
 def get_courses():
-    """Retrieve all course data including instructor name and slots remaining."""
     all_courses = get_course_data()
     return jsonify(all_courses)
 
+# Retrieve all student data for mock login.
 @api_bp.route('/students', methods=['GET'])
 def get_students():
-    """Retrieve all student data for mock login."""
     all_students = get_student_data()
     return jsonify(all_students)
 
+# Handle semantic and keyword-based search queries.
 @api_bp.route('/search', methods=['POST'])
 def search_courses():
-    """Handle semantic and keyword-based search queries."""
     data = request.json
     query = data.get('query', '')
     
@@ -37,9 +36,9 @@ def search_courses():
     
     return jsonify(results)
 
+# Handle student enrollment in a course.
 @api_bp.route('/enroll', methods=['POST'])
 def enroll_student():
-    """Handle student enrollment in a course."""
     data = request.json
     student_id = data.get('student_id')
     course_id = data.get('course_id')
@@ -53,37 +52,37 @@ def enroll_student():
     except ValueError as e:
         return jsonify({"message": str(e)}), 409
     
+# Handles: const allUsers = await apiFetch('/api/users');
 @api_bp.route('/users', methods=['GET'])
 def api_get_users():
-    """Handles: const allUsers = await apiFetch('/api/users');"""
     user_data = get_user_data()
     return jsonify(user_data)
 
+# Fetches detailed student data by User ID.
 @api_bp.route('/students/<int:user_id>', methods=['GET'])
 def api_get_student_details(user_id):
-    """Fetches detailed student data by User ID."""
     student_data = get_student_details_by_user_id(user_id)
     if student_data:
         return jsonify(student_data)
     return jsonify({"error": "Student not found"}), 404
 
+# Fetches detailed instructor data by User ID.
 @api_bp.route('/instructors/<int:user_id>', methods=['GET'])
 def api_get_instructor_details(user_id):
-    """Fetches detailed instructor data by User ID."""
     instructor_data = get_instructor_details_by_user_id(user_id)
     if instructor_data:
         return jsonify(instructor_data)
     return jsonify({"error": "Instructor not found"}), 404
 
+# Retrieves all active enrollments for a specific student.
 @api_bp.route('/student/<int:student_id>/enrollments', methods=['GET'])
 def api_get_student_enrollments(student_id):
-    """Retrieves all active enrollments for a specific student."""
     enrollments = get_student_enrollments(student_id)
     return jsonify(enrollments)
 
+# Fetches all courses taught by a specific instructor ID.
 @api_bp.route('/instructor/<int:instructor_id>/courses', methods=['GET'])
 def api_get_instructor_courses(instructor_id):
-    """Fetches all courses taught by a specific instructor ID."""
     courses = get_instructor_courses(instructor_id)
     return jsonify(courses)
 
