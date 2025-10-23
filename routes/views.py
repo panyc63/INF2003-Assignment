@@ -3,6 +3,7 @@ from flask import Blueprint, render_template, request, redirect, url_for
 #redirect blueprint
 views_bp = Blueprint('views', __name__)
 
+
 # Renders the Home page.
 @views_bp.route('/')
 def home():
