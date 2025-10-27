@@ -234,6 +234,7 @@ def weighted_search_and_merge(
                 "credits": course.credits,
                 "academic_term": course.academic_term,
                 "instructor_name": instructor_name,
+                'max_capacity': course.max_capacity,
                 "slots_left": slots_left,
                 "relevance_score": weight 
             }
@@ -250,7 +251,7 @@ def semantic_search(query: str) -> List[Dict[str, Any]]:
     # Search 1: Course ID/Code (Weight: 5)
     weighted_search_and_merge(
         weight=5, 
-        conditions="c.course_id ILIKE :q OR c.course_code ILIKE :q",
+        conditions="c.course_id LIKE :q OR c.course_code LIKE :q",
         search_pattern=search_pattern,
         final_results_map=final_results_map
     )
@@ -258,7 +259,7 @@ def semantic_search(query: str) -> List[Dict[str, Any]]:
     # Search 2: Course Name (Weight: 3)
     weighted_search_and_merge(
         weight=3, 
-        conditions="c.course_name ILIKE :q",
+        conditions="c.course_name LIKE :q",
         search_pattern=search_pattern,
         final_results_map=final_results_map
     )
@@ -266,7 +267,7 @@ def semantic_search(query: str) -> List[Dict[str, Any]]:
     # Search 3: Description and Instructor Name (Weight: 1)
     weighted_search_and_merge(
         weight=1, 
-        conditions="c.description ILIKE :q OR u.first_name ILIKE :q OR u.last_name ILIKE :q",
+        conditions="c.description LIKE :q OR u.first_name LIKE :q OR u.last_name LIKE :q",
         search_pattern=search_pattern,
         final_results_map=final_results_map
     )
