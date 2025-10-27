@@ -18,6 +18,17 @@ def about():
 def course():
     return render_template('course.html', view='course')
 
+# Renders the Course Detail page.
+@views_bp.route('/course-detail/<string:course_id>')
+def course_detail(course_id):
+    # Just pass the ID directly to the template.
+    # The template's JavaScript will use this ID to fetch data.
+    return render_template(
+        'course_detail.html', 
+        course_id=course_id, 
+        view='course_detail'
+    )
+
 # Renders the Details page.
 @views_bp.route('/detail')
 def detail():

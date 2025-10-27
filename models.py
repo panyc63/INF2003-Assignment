@@ -6,7 +6,7 @@ db = SQLAlchemy()
 # Base table for all system users (students, instructors, admins).
 class User(db.Model):
     __tablename__ = 'users'
-    id = db.Column(db.Integer, primary_key=True) 
+    user_id = db.Column(db.Integer, primary_key=True) 
     university_id = db.Column(db.String(50), unique=True, nullable=True, index=True) 
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
@@ -25,7 +25,7 @@ class User(db.Model):
 # Holds details specific to student users, linked one-to-one with the User table.
 class Student(db.Model):
     __tablename__ = 'students'
-    student_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), primary_key=True)
     enrollment_year = db.Column(db.Integer, nullable=False)
     major = db.Column(db.String(50))
     expected_graduation = db.Column(db.String(10)) 
@@ -42,7 +42,7 @@ class Student(db.Model):
 # Holds details specific to instructor users, linked one-to-one with the User table.
 class Instructor(db.Model):
     __tablename__ = 'instructors'
-    instructor_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    instructor_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), primary_key=True)
     department_code = db.Column(db.String(10), nullable=True)
     office_location = db.Column(db.String(50))
     office_hours = db.Column(db.Text)

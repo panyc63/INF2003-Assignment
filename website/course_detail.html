@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Course Details - Edukate{% endblock %}
+
+{% block content %}
+
+<div class="jumbotron jumbotron-fluid page-header position-relative overlay-bottom" style="margin-bottom: 90px;">
+    <div class="container text-center py-5">
+        <h1 class="text-white display-1" id="course-header-code">Loading...</h1>
+        <div class="d-inline-flex text-white mb-5">
+            <p class="m-0 text-uppercase"><a class="text-white" href="{{ url_for('views.home') }}">home</a></p>
+            <i class="fa fa-angle-double-right pt-1 px-3"></i>
+            <p class="m-0 text-uppercase"><a class="text-white" href="{{ url_for('views.course') }}">Courses</a></p>
+            <i class="fa fa-angle-double-right pt-1 px-3"></i>
+            <p class="m-0 text-uppercase" id="breadcrumb-title">...</p>
+        </div>
+    </div>
+</div>
+<div class="container-fluid py-5">
+    <div class="container py-5">
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="mb-5">
+                    <img class="img-fluid rounded w-100 mb-4" id="course-image" src="{{ url_for('static', filename='img/courses-1.jpg') }}" alt="Course Image">
+                    
+                    <h1 class="mb-3" id="course-title">Loading course details...</h1>
+                    <h2 class="mb-4 h4">Course Description</h2>
+                    <p id="course-description">...</p>
+                    
+                    <h3 class="mb-3 mt-5">Prerequisites</h3>
+                    <p id="course-prereqs">...</p>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm" style="position: sticky; top: 20px;">
+                    <div class="card-header bg-white border-0 p-4">
+                        <a href="#" class="btn btn-secondary btn-block btn-lg py-3">Enroll Now</a>
+                    </div>
+                    
+                    <div class="card-body p-4">
+                        <h4 class="mb-3">Course Details</h4>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <span class="font-weight-bold">Instructor</span>
+                                <span id="course-instructor">...</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <span class="font-weight-bold">Course Code</span>
+                                <span id="course-code">...</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <span class="font-weight-bold">Credits</span>
+                                <span id="course-credits">...</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <span class="font-weight-bold">Term</span>
+                                <span id="course-term">...</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <span class="font-weight-bold">Capacity</span>
+                                <span id="course-capacity">...</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="card-footer bg-white border-0 p-4">
+                        <h5 class="mb-3">Enrollment Status</h5>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Slots Left</span>
+                            <strong id="course-slots-left">...</strong>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-secondary" role="progressbar" id="course-progress-bar"
+                                 style="width: 0%;" 
+                                 aria-valuenow="0" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                            </div>
+                        </div>
+                        <small class="text-muted" id="course-slots-filled">... of ... slots filled</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    // This function runs when the page finishes loading
+    document.addEventListener('DOMContentLoaded', () => {
+        // 1. Get the course_id passed from Flask
+        //    We use |tojson to safely convert the Python string into a JS string
+        const courseId = { course_i};
+        
+        // 2. Call the function to fetch and populate data
+        populateCourseData(courseId);
+    });
+
+    // Fetches data from your API and updates the HTML
+    async function populateCourseData(courseId) {
+        try {
+            // 3. Fetch data from your API
+            //    (I am assuming you have an endpoint like '/api/course/<id>'
+            //    and that apiFetch is defined elsewhere, as in your previous file)
+            const course = await apiFetch(`/api/course/${courseId}`);
+            print(course)
+            if (!course) {
+                document.getElementById('course-title').innerText = "Error: Course not found.";
+                return;
+            }
+
+            // 4. Populate all the placeholders with data
+            
+            // Update page title
+            document.title = `${course.title} - Edukate`;
+
+            // Headers
+            document.getElementById('course-header-code').innerText = course.course_code;
+            document.getElementById('breadcrumb-title').innerText = course.title;
+
+            // Main Content
+            document.getElementById('course-title').innerText = course.title;
+            document.getElementById('course-description').innerText = course.description;
+            document.getElementById('course-prereqs').innerText = (course.prerequisites && course.prerequisites !== 'None') 
+                ? `This course requires the successful completion of: ${course.prerequisites}.`
+                : "There are no prerequisites for this course.";
+
+            // Sidebar Details
+            document.getElementById('course-instructor').innerText = course.instructor_name;
+            document.getElementById('course-code').innerText = course.course_code;
+            document.getElementById('course-credits').innerText = course.credits;
+            document.getElementById('course-term').innerText = course.academic_term;
+            document.getElementById('course-capacity').innerText = `${course.max_capacity} Students`;
+
+            // Enrollment Status
+            document.getElementById('course-slots-left').innerText = course.slots_left;
+            document.getElementById('course-slots-filled').innerText = `${course.current_enrollment} of ${course.max_capacity} slots filled`;
+            
+            // Calculate and set progress bar
+            const percent = (course.current_enrollment / course.max_capacity) * 100;
+            const progressBar = document.getElementById('course-progress-bar');
+            progressBar.style.width = `${percent}%`;
+            progressBar.setAttribute('aria-valuenow', course.current_enrollment);
+            progressBar.setAttribute('aria-valuemax', course.max_capacity);
+
+        } catch (error) {
+            console.error("Failed to load course details:", error);
+            document.getElementById('course-title').innerText = "Error loading course data.";
+        }
+    }
+</script>
+{% endblock %}

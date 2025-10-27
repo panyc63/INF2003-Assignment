@@ -20,6 +20,14 @@ def get_courses():
     all_courses = get_course_data()
     return jsonify(all_courses)
 
+# Retrieve all course data including instructor name and slots remaining.
+@api_bp.route('/courses/<string:course_id>', methods=['GET'])
+def get_course(course_id):
+    course = get_course_data(course_id)
+    if course:
+        return jsonify(course)
+    return jsonify({"error": "Course not found"}), 404
+
 # Retrieve all student data for mock login.
 @api_bp.route('/students', methods=['GET'])
 def get_students():
