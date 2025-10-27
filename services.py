@@ -1,7 +1,8 @@
 from models import db, User, Student, Instructor, Course, Enrollment, Prerequisites, Assignment, Submission
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func, or_, text
+from typing import Dict, Any, List
 from datetime import datetime
-from sqlalchemy import func, or_
 
 # --- Mock Data ---
 MOCK_USERS = [
@@ -45,27 +46,40 @@ MOCK_INITIAL_ENROLLMENTS = [
 ]
 
 
-# Returns a set of course_ids a student has successfully completed.
+# Function for instructor name
+def get_instructor_full_name_by_id(instructor_id):
+    """Fetches an instructor's full name by their ID using raw SQL."""
+    if not instructor_id:
+        return "TBA"
+    
+    sql = text("SELECT first_name, last_name FROM user WHERE id = :id")
+    result = db.session.execute(sql, {"id": instructor_id}).first()
+    
+    if result:
+        return f"{result.first_name} {result.last_name}"
+    return "TBA"
+
+# Function for student's completed courses
 def get_student_completed_courses(student_id):
-    completed = db.session.query(Enrollment.course_id).filter(
-        Enrollment.student_id == student_id,
-        Enrollment.status == 'Completed',
-        Enrollment.final_grade.isnot(None)
-    ).all()
-    return {c[0] for c in completed}
+    sql = text("""
+        SELECT course_id FROM enrollment 
+        WHERE student_id = :sid 
+        AND status = 'Completed' 
+        AND final_grade IS NOT NULL
+    """)
+    completed = db.session.execute(sql, {"sid": student_id}).all()
+    return {c.course_id for c in completed}
 
 # Checks if a student meets all prerequisites for a given course.
 def check_prerequisites(student_id, course_id):
-    required_prereqs = db.session.query(Prerequisites.requires_course_id).filter(
-        Prerequisites.course_id == course_id
-    ).all()
+    sql = text("SELECT requires_course_id FROM prerequisites WHERE course_id = :cid")
+    required_prereqs = db.session.execute(sql, {"cid": course_id}).all()
 
     if not required_prereqs:
         return True, []
 
-    required_ids = {p[0] for p in required_prereqs}
-    completed_ids = get_student_completed_courses(student_id)
-
+    required_ids = {p.requires_course_id for p in required_prereqs}
+    completed_ids = get_student_completed_courses(student_id) 
     missing_ids = list(required_ids - completed_ids)
     
     if missing_ids:
@@ -75,8 +89,10 @@ def check_prerequisites(student_id, course_id):
 
 # Initializes the database with mock data for all models.
 def initialize_database():
-    if User.query.count() == 0:
-        
+    count_sql = text("SELECT COUNT(*) FROM user")
+    user_count = db.session.execute(count_sql).scalar()
+    
+    if user_count == 0:
         for data in MOCK_USERS:
             db.session.add(User(**data))
         db.session.commit()
@@ -92,179 +108,264 @@ def initialize_database():
             
         for data in MOCK_PREREQS:
             db.session.add(Prerequisites(**data))
-
         db.session.commit()
         
         for data in MOCK_INITIAL_ENROLLMENTS:
             db.session.add(Enrollment(**data))
             if data.get('status') == 'Enrolled':
-                course = Course.query.get(data['course_id'])
-                if course:
-                    course.current_enrollment = (course.current_enrollment or 0) + 1
-            
+                update_sql = text("""
+                    UPDATE course 
+                    SET current_enrollment = COALESCE(current_enrollment, 0) + 1 
+                    WHERE course_id = :cid
+                """)
+                db.session.execute(update_sql, {"cid": data['course_id']})
+                
         db.session.commit()
         print("Database initialized with mock data.")
 
 # Handles the enrollment transaction with slot checking and prerequisite checking.
 def enroll_student_in_course(student_id, course_id, semester="Fall 2025"):
-    student = Student.query.get(student_id)
-    course = Course.query.get(course_id)
+    student_sql = text("""
+        SELECT u.first_name 
+        FROM student s 
+        JOIN user u ON s.student_id = u.id 
+        WHERE s.student_id = :sid
+    """)
+    student = db.session.execute(student_sql, {"sid": student_id}).first()
+    
+    course_sql = text("SELECT * FROM course WHERE course_id = :cid")
+    course = db.session.execute(course_sql, {"cid": course_id}).first()
 
     if not student:
         raise ValueError("Student not found.")
     if not course:
         raise ValueError("Course not found.")
 
-    if course.current_enrollment >= course.max_capacity:
+    if (course.current_enrollment or 0) >= course.max_capacity:
         raise ValueError("Course is full. Enrollment failed.")
     
     prereqs_met, missing = check_prerequisites(student_id, course_id)
     if not prereqs_met:
         raise ValueError(f"Prerequisites not met. Missing courses: {', '.join(missing)}")
     
-    existing_enrollment = Enrollment.query.filter(
-        Enrollment.student_id == student_id, 
-        Enrollment.course_id == course_id,
-        Enrollment.status.in_(['Enrolled', 'Waitlisted']) 
-    ).first()
+    existing_sql = text("""
+        SELECT 1 FROM enrollment 
+        WHERE student_id = :sid AND course_id = :cid 
+        AND status IN ('Enrolled', 'Waitlisted') 
+        LIMIT 1
+    """)
+    existing_enrollment = db.session.execute(existing_sql, {"sid": student_id, "cid": course_id}).first()
     
     if existing_enrollment:
         raise ValueError("Student is already actively enrolled in this course.")
 
     try:
-        new_enrollment = Enrollment(
-            student_id=student_id, 
-            course_id=course_id,
-            semester=semester,
-            status='Enrolled'
-        )
-        db.session.add(new_enrollment)
+        insert_sql = text("""
+            INSERT INTO enrollment (student_id, course_id, semester, status) 
+            VALUES (:sid, :cid, :sem, 'Enrolled')
+        """)
+        db.session.execute(insert_sql, {"sid": student_id, "cid": course_id, "sem": semester})
         
-        course.current_enrollment += 1
+        update_sql = text("""
+            UPDATE course 
+            SET current_enrollment = COALESCE(current_enrollment, 0) + 1 
+            WHERE course_id = :cid
+        """)
+        db.session.execute(update_sql, {"cid": course_id})
         
         db.session.commit()
-        return f"Successfully enrolled {student.user.first_name} in {course.course_code} - {course.course_name} for {semester}."
-    except IntegrityError:
+        return f"Successfully enrolled {student.first_name} in {course.course_code} - {course.course_name} for {semester}."
+    
+    except IntegrityError as e:
         db.session.rollback()
+        print(e)
         raise ValueError("Database error occurred during enrollment.")
 
-# Performs a dynamic text search across course data using database lookups for expansion.
-def semantic_search(query):
-    query_lower = query.lower()
-    
-    initial_terms = set(query_lower.split())
-    expanded_search_terms = set(initial_terms)
-    
-    instructor_matches = db.session.query(User.first_name, User.last_name).join(
-        Instructor, User.id == Instructor.instructor_id
-    ).filter(
-        or_(
-            User.first_name.ilike(f'%{query_lower}%'),
-            User.last_name.ilike(f'%{query_lower}%'),
-            Instructor.department_code.ilike(f'%{query_lower}%')
-        )
-    ).all()
-    
-    for first_name, last_name in instructor_matches:
-        expanded_search_terms.add(first_name.lower())
-        expanded_search_terms.add(last_name.lower())
+# Fetches all course prerequisites and maps them for quick lookup.
+def get_prerequisites_map() -> Dict[str, List[str]]:
 
-    course_code_matches = Course.query.filter(
-        or_(
-            Course.course_code.ilike(f'%{query_lower}%'),
-            Course.course_id.ilike(f'%{query_lower}%')
-        )
-    ).all()
-
-    for course in course_code_matches:
-        expanded_search_terms.update([word for word in course.course_name.lower().split() if len(word) > 2])
-        expanded_search_terms.update([word for word in course.description.lower().split() if len(word) > 2])
-
-    final_search_terms = [term for term in expanded_search_terms if len(term) > 2]
+    prereqs_sql = text("SELECT course_id, requires_course_id FROM prerequisites")
+    prereqs_results = db.session.execute(prereqs_sql).all()
     
-    results = []
-    all_courses = Course.query.all()
-    
-    for course in all_courses:
-        instructor_name = get_instructor_full_name(course)
-        course_text = f"{course.course_id} {course.course_name} {course.description} {course.course_code} {instructor_name}".lower()
+    prereq_map = {}
+    for p in prereqs_results:
+        if p.course_id not in prereq_map:
+            prereq_map[p.course_id] = []
+        prereq_map[p.course_id].append(p.requires_course_id)
         
-        score = 0
-        for term in final_search_terms:
-            if term in course_text:
-                score += 1
+    # Return content: dict: {course_id: [requires_course_id, ...]}
+    return prereq_map
 
-        if score > 0:
+def weighted_search_and_merge(
+    weight: int, 
+    conditions: str, 
+    like_query: str, 
+    final_results_map: Dict[str, Dict[str, Any]]
+) -> None:
+
+    sql = text(f"""
+        SELECT 
+            c.course_id, c.course_code, c.course_name, c.description,
+            c.credits, c.academic_term, c.max_capacity, c.current_enrollment,
+            u.first_name AS instructor_first, 
+            u.last_name AS instructor_last
+        FROM course c
+        LEFT JOIN instructor i ON c.instructor_id = i.instructor_id
+        LEFT JOIN user u ON i.instructor_id = u.id
+        WHERE {conditions}
+    """)
+    
+    matches = db.session.execute(sql, {"q": like_query}).all()
+    
+    for course in matches:
+        course_id = course.course_id
+        current_score = final_results_map.get(course_id, {}).get('relevance_score', 0)
+        
+        if weight > current_score:
+            instructor_name = f"{course.instructor_first} {course.instructor_last}" if course.instructor_first else "TBA"
             slots_left = course.max_capacity - (course.current_enrollment or 0)
             
-            prereqs = [p.requires_course_id for p in course.prerequisites]
-
-            results.append({
-                "course_id": course.course_id,
+            final_results_map[course_id] = {
+                "course_id": course_id,
                 "course_code": course.course_code,
                 "title": course.course_name,
                 "description": course.description,
-                "prerequisites": ", ".join(prereqs) if prereqs else "None",
                 "credits": course.credits,
                 "academic_term": course.academic_term,
                 "instructor_name": instructor_name,
                 "slots_left": slots_left,
-                "relevance_score": score
-            })
+                "relevance_score": weight 
+            }
 
-    results.sort(key=lambda x: x['relevance_score'], reverse=True)
-    return results
+# Performs a text search across course data, merging and display results based on weight.
+def semantic_search(query: str) -> List[Dict[str, Any]]:
+
+    query_lower = query.lower()
+    like_query = f'%{query_lower}%'
+    
+    # Key: course_id, Value: {course_data, score}
+    final_results_map = {}
+    
+    # Search 1: Course ID/Code (Weight: 5)
+    weighted_search_and_merge(
+        weight=5, 
+        conditions="c.course_id ILIKE :q OR c.course_code ILIKE :q",
+        like_query=like_query,
+        final_results_map=final_results_map
+    )
+
+    # Search 2: Course Name (Weight: 3)
+    weighted_search_and_merge(
+        weight=3, 
+        conditions="c.course_name ILIKE :q",
+        like_query=like_query,
+        final_results_map=final_results_map
+    )
+
+    # Search 3: Description and Instructor Name (Weight: 1)
+    weighted_search_and_merge(
+        weight=1, 
+        conditions="c.description ILIKE :q OR u.first_name ILIKE :q OR u.last_name ILIKE :q",
+        like_query=like_query,
+        final_results_map=final_results_map
+    )
+        
+    prereq_map = get_prerequisites_map()
+    
+    results_list = list(final_results_map.values())
+    
+    for result in results_list:
+        course_id = result['course_id']
+        prereqs = prereq_map.get(course_id, [])
+        result["prerequisites"] = ", ".join(prereqs) if prereqs else "None"
+    results_list.sort(key=lambda x: x['relevance_score'], reverse=True)
+    return results_list
+
 
 # Fetches all courses with details.
 def get_course_data():
-    courses = Course.query.all()
-    return [
-        {
+    # NOTE: GROUP_CONCAT is SQLite specific. Use STRING_AGG for PostgreSQL or LISTAGG for Oracle.
+    sql = text("""
+        SELECT 
+            c.*, 
+            u.first_name AS instructor_first, 
+            u.last_name AS instructor_last,
+            (SELECT GROUP_CONCAT(pr.requires_course_id) 
+             FROM prerequisites pr 
+             WHERE pr.course_id = c.course_id) AS prereqs_list
+        FROM course c
+        LEFT JOIN instructor i ON c.instructor_id = i.instructor_id
+        LEFT JOIN user u ON i.instructor_id = u.id
+    """)
+    courses = db.session.execute(sql).all()
+    
+    results = []
+    for c in courses:
+        if c.instructor_first:
+            instructor_name = f"{c.instructor_first} {c.instructor_last}"
+        else:
+            instructor_name = "TBA"
+            
+        prereqs = c.prereqs_list.split(',') if c.prereqs_list else []
+
+        results.append({
             "course_id": c.course_id,
             "course_code": c.course_code,
             "title": c.course_name,
             "description": c.description,
-            "prerequisites": ", ".join([p.requires_course_id for p in c.prerequisites]) if c.prerequisites else "None",
+            "prerequisites": ", ".join(prereqs) if prereqs else "None",
             "credits": c.credits,
             "academic_term": c.academic_term,
             "max_capacity": c.max_capacity,
             "current_enrollment": c.current_enrollment,
             "slots_left": c.max_capacity - (c.current_enrollment or 0),
-            "instructor_name": get_instructor_full_name(c)
-        }
-        for c in courses
-    ]
+            "instructor_name": instructor_name
+        })
+    return results
 
 # Fetches essential data for all students.
 def get_student_data():
-    students = db.session.query(Student, User).join(User).all()
+    sql = text("""
+        SELECT s.student_id, u.university_id, u.first_name, u.last_name, s.major
+        FROM student s
+        JOIN user u ON s.student_id = u.id
+    """)
+    students = db.session.execute(sql).all()
+    
     return [
         {
             "id": s.student_id,
-            "university_id": u.university_id,
-            "name": f"{u.first_name} {u.last_name}",
+            "university_id": s.university_id,
+            "name": f"{s.first_name} {s.last_name}",
             "major": s.major
         } 
-        for s, u in students
+        for s in students
     ]
 
 # Fetches essential data for all instructors.
 def get_instructor_data():
-    instructors = db.session.query(Instructor, User).join(User).all()
+    sql = text("""
+        SELECT i.instructor_id, u.first_name, u.last_name, u.email, 
+               i.department_code, i.title
+        FROM instructor i
+        JOIN user u ON i.instructor_id = u.id
+    """)
+    instructors = db.session.execute(sql).all()
     return [
         {
             "id": i.instructor_id,
-            "name": f"{u.first_name} {u.last_name}",
-            "email": u.email,
+            "name": f"{i.first_name} {i.last_name}",
+            "email": i.email,
             "department_code": i.department_code,
             "title": i.title
         } 
-        for i, u in instructors
+        for i in instructors
     ]
 
 # Fetches all users for client-side login verification.
 def get_user_data():
-    users = User.query.all()
+    sql = text("SELECT id, email, first_name, last_name, role FROM user")
+    users = db.session.execute(sql).all()
     return [
         {
             "id": u.id,
@@ -277,7 +378,8 @@ def get_user_data():
 
 # Fetches detailed student data using the linked User ID.
 def get_student_details_by_user_id(user_id):
-    student = Student.query.filter_by(student_id=user_id).first()
+    sql = text("SELECT student_id, enrollment_year, major FROM student WHERE student_id = :uid")
+    student = db.session.execute(sql, {"uid": user_id}).first()
     
     if student:
         return {
@@ -289,7 +391,8 @@ def get_student_details_by_user_id(user_id):
 
 # Fetches detailed instructor data using the linked User ID.
 def get_instructor_details_by_user_id(user_id):
-    instructor = Instructor.query.filter_by(instructor_id=user_id).first()
+    sql = text("SELECT instructor_id, department_code, title FROM instructor WHERE instructor_id = :uid")
+    instructor = db.session.execute(sql, {"uid": user_id}).first()
     
     if instructor:
         return {
@@ -301,27 +404,40 @@ def get_instructor_details_by_user_id(user_id):
 
 # Retrieves the instructor's full name, handling missing records.
 def get_instructor_full_name(course):
-    if course.instructor and course.instructor.user:
+    if hasattr(course, 'instructor') and course.instructor and course.instructor.user:
         return f"{course.instructor.user.first_name} {course.instructor.user.last_name}"
+    elif hasattr(course, 'instructor_id') and course.instructor_id:
+        return get_instructor_full_name_by_id(course.instructor_id)
     return "TBA"
 
 # Fetches currently enrolled courses for a given student ID.
 def get_student_enrollments(student_id):
-    enrollments = db.session.query(Enrollment).filter(
-        Enrollment.student_id == student_id,
-        Enrollment.status == 'Enrolled'
-    ).all()
+    sql = text("""
+        SELECT 
+            c.course_id, c.course_name, c.credits, c.academic_term,
+            e.semester,
+            u.first_name AS instructor_first, 
+            u.last_name AS instructor_last
+        FROM enrollment e
+        JOIN course c ON e.course_id = c.course_id
+        LEFT JOIN instructor i ON c.instructor_id = i.instructor_id
+        LEFT JOIN user u ON i.instructor_id = u.id
+        WHERE e.student_id = :sid AND e.status = 'Enrolled'
+    """)
+    enrollments = db.session.execute(sql, {"sid": student_id}).all()
 
     results = []
     for enrollment in enrollments:
-        course = enrollment.course
-        instructor_name = get_instructor_full_name(course)
+        if enrollment.instructor_first:
+            instructor_name = f"{enrollment.instructor_first} {enrollment.instructor_last}"
+        else:
+            instructor_name = "TBA"
         
         results.append({
-            "course_id": course.course_id,
-            "title": course.course_name,
-            "credits": course.credits,
-            "academic_term": course.academic_term,
+            "course_id": enrollment.course_id,
+            "title": enrollment.course_name,
+            "credits": enrollment.credits,
+            "academic_term": enrollment.academic_term,
             "instructor_name": instructor_name,
             "semester": enrollment.semester,
         })
@@ -330,7 +446,13 @@ def get_student_enrollments(student_id):
 
 # Fetches all courses taught by a specific instructor ID.
 def get_instructor_courses(instructor_id):
-    courses = Course.query.filter_by(instructor_id=instructor_id).all()
+    sql = text("""
+        SELECT course_id, course_code, course_name, description, 
+               credits, max_capacity, COALESCE(current_enrollment, 0) AS current_enrollment
+        FROM course 
+        WHERE instructor_id = :iid
+    """)
+    courses = db.session.execute(sql, {"iid": instructor_id}).all()
     
     return [
         {
@@ -340,24 +462,33 @@ def get_instructor_courses(instructor_id):
             "description": c.description,
             "credits": c.credits,
             "max_capacity": c.max_capacity,
-            "current_enrollment": c.current_enrollment or 0
+            "current_enrollment": c.current_enrollment
         }
         for c in courses
     ]
 
 # Fetches list of actively enrolled students and their details in a course.
 def get_students_in_course(course_id): 
-    students = db.session.query(Student, User).join(Enrollment, Student.student_id == Enrollment.student_id).join(User, Student.student_id == User.id).filter(
-        Enrollment.course_id == course_id,
-        Enrollment.status == 'Enrolled'
-    ).all()
+    sql = text("""
+        SELECT 
+            s.student_id, 
+            u.first_name, 
+            u.last_name, 
+            s.major, 
+            u.university_id
+        FROM student s
+        JOIN enrollment e ON s.student_id = e.student_id
+        JOIN user u ON s.student_id = u.id
+        WHERE e.course_id = :cid AND e.status = 'Enrolled'
+    """)
+    students = db.session.execute(sql, {"cid": course_id}).all()
     
     return [
         {
             "id": s.student_id,
-            "name": f"{u.first_name} {u.last_name}",
+            "name": f"{s.first_name} {s.last_name}",
             "major": s.major,
-            "university_id": u.university_id
+            "university_id": s.university_id
         }
-        for s, u in students
+        for s in students
     ]
