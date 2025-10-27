@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for
+from services import get_course_data,get_course_details_by_id
 
 #redirect blueprint
 views_bp = Blueprint('views', __name__)
@@ -7,7 +8,8 @@ views_bp = Blueprint('views', __name__)
 # Renders the Home page.
 @views_bp.route('/')
 def home():
-    return render_template('home.html', view='home')
+    all_courses = get_course_data()
+    return render_template('home.html', courses=all_courses, view='home')
 
 # Renders the About Us page.
 @views_bp.route('/about')
@@ -17,12 +19,8 @@ def about():
 # Renders the Course page.
 @views_bp.route('/course')
 def course():
-    return render_template('course.html', view='course')
-
-# Renders the Details page.
-@views_bp.route('/detail')
-def detail():
-    return render_template('detail.html', view='detail')
+    all_courses = get_course_data()
+    return render_template('course.html', courses=all_courses, view='course')
 
 # Renders the Login page
 @views_bp.route('/login', methods=['GET', 'POST'])
@@ -41,3 +39,12 @@ def dashboard():
 @views_bp.route('/instructor_dashboard')
 def instructor_dashboard():
     return render_template('instructor_dashboard.html', view='instructor_dashboard')
+
+
+@views_bp.route('/course/<string:course_id>')
+def course_info(course_id):
+    selected_course = get_course_details_by_id(course_id)
+    if selected_course is None:
+        return render_template('404.html', message=f"Course ID {course_id} not found"), 404
+        
+    return render_template('course_info.html', course=selected_course, view='course')

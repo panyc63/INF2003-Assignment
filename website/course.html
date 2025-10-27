@@ -17,9 +17,8 @@
                         <button class="btn btn-outline-light bg-white text-body px-4 dropdown-toggle" type="button" data-toggle="dropdown"
                             aria-haspopup="true" aria-expanded="false">Courses</button>
                         <div class="dropdown-menu">
-                            <a class="dropdown-item" href="#">Courses 1</a>
-                            <a class="dropdown-item" href="#">Courses 2</a>
-                            <a class="dropdown-item" href="#">Courses 3</a>
+                            <a class="dropdown-item" href="#">Courses</a>
+                            <a class="dropdown-item" href="#">Instructor</a>
                         </div>
                     </div>
                     <input type="text" class="form-control border-light" style="padding: 30px 25px;" placeholder="Keyword">
@@ -40,105 +39,37 @@
                     </div>
                 </div>
             </div>
+            
             <div class="row">
-                <div class="col-lg-4 col-md-6 pb-4">
-                    <a class="courses-list-item position-relative d-block overflow-hidden mb-2" href="#">
-                        <img class="img-fluid" src="{{ url_for('static', filename='img/courses-1.jpg') }}" alt="">
-                        <div class="courses-text">
-                            <h4 class="text-center text-white px-3">Web design & development courses for
-                                beginners</h4>
-                            <div class="border-top w-100 mt-3">
-                                <div class="d-flex justify-content-between p-4">
-                                    <span class="text-white"><i class="fa fa-user mr-2"></i>Jhon Doe</span>
-                                    <span class="text-white"><i class="fa fa-star mr-2"></i>4.5
-                                        <small>(250)</small></span>
+                {% for course in courses %}
+                    {% set image_number = (loop.index0 % 6) + 1 %} 
+                    {# loop.index0 starts at 0. (0%6)+1 = 1, (5%6)+1 = 6, (6%6)+1 = 1. #}
+                    
+                    <div class="col-lg-4 col-md-6 pb-4">
+                        <a class="courses-list-item position-relative d-block overflow-hidden mb-2" 
+                            href="{{ url_for('views.course_info', course_id=course.course_id) }}">
+                            
+                            <img class="img-fluid" 
+                                {# 💡 FIX APPLIED HERE: Dynamic image source using modulo 6 #}
+                                src="{{ url_for('static', filename='img/courses-' + image_number|string + '.jpg') }}" 
+                                alt="{{ course.course_name }}">
+                            
+                            <div class="courses-text">
+                                <h4 class="text-center text-white px-3">{{ course.course_code }} - {{ course.course_name }}</h4>
+                                <div class="border-top w-100 mt-3">
+                                    <div class="d-flex justify-content-between p-4">
+                                        <span class="text-white"><i class="fa fa-user mr-2"></i>{{ course.instructor_name }}</span>
+                                        <span class="text-white"><i class="fa fa-book-open mr-2"></i>{{ course.credits }} Credits</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-lg-4 col-md-6 pb-4">
-                    <a class="courses-list-item position-relative d-block overflow-hidden mb-2" href="#">
-                        <img class="img-fluid" src="{{ url_for('static', filename='img/courses-2.jpg') }}" alt="">
-                        <div class="courses-text">
-                            <h4 class="text-center text-white px-3">Web design & development courses for
-                                beginners</h4>
-                            <div class="border-top w-100 mt-3">
-                                <div class="d-flex justify-content-between p-4">
-                                    <span class="text-white"><i class="fa fa-user mr-2"></i>Jhon Doe</span>
-                                    <span class="text-white"><i class="fa fa-star mr-2"></i>4.5
-                                        <small>(250)</small></span>
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-lg-4 col-md-6 pb-4">
-                    <a class="courses-list-item position-relative d-block overflow-hidden mb-2" href="#">
-                        <img class="img-fluid" src="{{ url_for('static', filename='img/courses-3.jpg') }}" alt="">
-                        <div class="courses-text">
-                            <h4 class="text-center text-white px-3">Web design & development courses for
-                                beginners</h4>
-                            <div class="border-top w-100 mt-3">
-                                <div class="d-flex justify-content-between p-4">
-                                    <span class="text-white"><i class="fa fa-user mr-2"></i>Jhon Doe</span>
-                                    <span class="text-white"><i class="fa fa-star mr-2"></i>4.5
-                                        <small>(250)</small></span>
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-lg-4 col-md-6 pb-4">
-                    <a class="courses-list-item position-relative d-block overflow-hidden mb-2" href="#">
-                        <img class="img-fluid" src="{{ url_for('static', filename='img/courses-4.jpg') }}" alt="">
-                        <div class="courses-text">
-                            <h4 class="text-center text-white px-3">Web design & development courses for
-                                beginners</h4>
-                            <div class="border-top w-100 mt-3">
-                                <div class="d-flex justify-content-between p-4">
-                                    <span class="text-white"><i class="fa fa-user mr-2"></i>Jhon Doe</span>
-                                    <span class="text-white"><i class="fa fa-star mr-2"></i>4.5
-                                        <small>(250)</small></span>
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-lg-4 col-md-6 pb-4">
-                    <a class="courses-list-item position-relative d-block overflow-hidden mb-2" href="#">
-                        <img class="img-fluid" src="{{ url_for('static', filename='img/courses-5.jpg') }}" alt="">
-                        <div class="courses-text">
-                            <h4 class="text-center text-white px-3">Web design & development courses for
-                                beginners</h4>
-                            <div class="border-top w-100 mt-3">
-                                <div class="d-flex justify-content-between p-4">
-                                    <span class="text-white"><i class="fa fa-user mr-2"></i>Jhon Doe</span>
-                                    <span class="text-white"><i class="fa fa-star mr-2"></i>4.5
-                                        <small>(250)</small></span>
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                <div class="col-lg-4 col-md-6 pb-4">
-                    <a class="courses-list-item position-relative d-block overflow-hidden mb-2" href="#">
-                        <img class="img-fluid" src="{{ url_for('static', filename='img/courses-6.jpg') }}" alt="">
-                        <div class="courses-text">
-                            <h4 class="text-center text-white px-3">Web design & development courses for
-                                beginners</h4>
-                            <div class="border-top w-100 mt-3">
-                                <div class="d-flex justify-content-between p-4">
-                                    <span class="text-white"><i class="fa fa-user mr-2"></i>Jhon Doe</span>
-                                    <span class="text-white"><i class="fa fa-star mr-2"></i>4.5
-                                        <small>(250)</small></span>
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
+                        </a>
+                    </div>
+                {% endfor %}
+
                 <div class="col-12">
                     <nav aria-label="Page navigation">
+                        {# Pagination placeholder remains static for now #}
                         <ul class="pagination pagination-lg justify-content-center mb-0">
                           <li class="page-item disabled">
                             <a class="page-link rounded-0" href="#" aria-label="Previous">
@@ -161,4 +92,4 @@
             </div>
         </div>
     </div>
-    {% endblock %}
+{% endblock %}

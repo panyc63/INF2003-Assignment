@@ -313,7 +313,7 @@ def get_course_data():
         results.append({
             "course_id": c.course_id,
             "course_code": c.course_code,
-            "title": c.course_name,
+            "course_name": c.course_name,
             "description": c.description,
             "prerequisites": ", ".join(prereqs) if prereqs else "None",
             "credits": c.credits,
@@ -324,6 +324,24 @@ def get_course_data():
             "instructor_name": instructor_name
         })
     return results
+
+def get_course_details_by_id(course_id):
+    sql = text("""
+        SELECT course_id, course_name, credits, description, academic_term
+        FROM courses 
+        WHERE course_id = :cid
+    """)
+    course = db.session.execute(sql, {"cid": course_id}).first()
+    
+    if course:
+        return {
+            "course_id": course.course_id, 
+            "course_name": course.course_name,
+            "credits": course.credits,
+            "description": course.description,
+            "academic_term": course.academic_term,
+        }
+    return None
 
 # Fetches essential data for all students.
 def get_student_data():
