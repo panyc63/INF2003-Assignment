@@ -88,6 +88,7 @@
             localStorage.removeItem('user_name');
             localStorage.removeItem('student_id');      // Clear role-specific ID
             localStorage.removeItem('instructor_id');   // Clear role-specific ID
+            localStorage.removeItem('admin_id');   // Clear role-specific ID
              
             showStatusMessage('Logged out successfully.', 'success');
             window.location.href = '/login'; 
@@ -115,6 +116,7 @@
     }
 
     async function apiFetch(url, method = 'GET', body = null) {
+        console.log(url);
          try {
             const options = {
                 method: method,

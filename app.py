@@ -9,7 +9,8 @@ from routes.api import api_bp
 # Initialize Flask app
 app = Flask(__name__, template_folder='website', static_folder='website/static')
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///ucms.db']
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:PASSWORD@localhost/inf2003-db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:TYKroot%40321@localhost/inf2003-db'
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:PASSWORD@localhost/inf2003-db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = 'super_secret_key' 
 db.init_app(app)

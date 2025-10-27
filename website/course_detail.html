@@ -112,14 +112,14 @@
             // 4. Populate all the placeholders with data
             
             // Update page title
-            document.title = `${course.title} - Edukate`;
+            document.title = `${course.course_name} - Edukate`;
 
             // Headers
             document.getElementById('course-header-code').innerText = course.course_code;
-            document.getElementById('breadcrumb-title').innerText = course.title;
+            document.getElementById('breadcrumb-title').innerText = course.course_name;
 
             // Main Content
-            document.getElementById('course-title').innerText = course.title;
+            document.getElementById('course-title').innerText = course.course_name;
             document.getElementById('course-description').innerText = course.description;
             document.getElementById('course-prereqs').innerText = (course.prerequisites && course.prerequisites !== 'None') 
                 ? `This course requires the successful completion of: ${course.prerequisites}.`

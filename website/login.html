@@ -42,10 +42,8 @@
             const user = allUsers.find(u => u.email.toLowerCase() === email);
 
             if (user && password === 'password') { 
-                
                 let redirectUrl = '/dashboard';
                 let roleSpecificId = null;
-
                 // --- Fetch Role-Specific ID ---
                 if (user.role === 'student') {
                     const studentData = await apiFetch(`/api/students/${user.id}`); 
@@ -56,13 +54,19 @@
                         redirectUrl = '/dashboard';
                     }
                 } else if (user.role === 'instructor') {
-                    const instructorData = await apiFetch(`/api/instructors/${user.id}`); 
+                    const instructorData = await apiFetch(`/api/instructors/${user.instructor_id}`); 
                     if (instructorData) {
                          roleSpecificId = instructorData.id; 
                          // Save the role-specific ID using the UN-PREFIXED KEY
                          localStorage.setItem('instructor_id', roleSpecificId); 
                          redirectUrl = '/instructor_dashboard'; 
                     }
+                } else if (user.role === 'admin') {
+                    //admin not done yet does nothing
+                    // Save the role-specific ID using the UN-PREFIXED KEY
+                    localStorage.setItem('admin_id', user.user_id); 
+                    redirectUrl = '/admin_dashboard'; 
+                    alert('Admin functions are not implemented yet.');
                 }
     
                 // --- 1. Store Universal State Keys (UN-PREFIXED) ---
@@ -71,7 +75,7 @@
                 localStorage.setItem('user_name', user.name);
                 
                 showStatusMessage(`Welcome, ${user.name} (${user.role})! Redirecting...`, 'success');
-                window.location.href = redirectUrl;
+                //window.location.href = redirectUrl;
 
             } else {
                 showStatusMessage('Login Failed: Invalid Email or Password.', 'error');

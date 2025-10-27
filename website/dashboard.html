@@ -58,7 +58,6 @@
                 enrollmentList.innerHTML = '<p class="text-gray-500 mx-3">You are not currently enrolled in any courses.</p>';
                 return;
             }
-
             enrollmentList.innerHTML = data.map(course => `
                 <div class="p-2 border border-yellow-200 bg-yellow-100 rounded-md">
                     <strong class="text-blue-800">${course.course_id} - ${course.title}</strong>
@@ -98,12 +97,12 @@
                     const isFull = course.slots_left <= 0;
                     const buttonHtml = isFull 
                         ? `<button class="btn-secondary bg-red-100 text-red-700 cursor-not-allowed" disabled>Full</button>`
-                        : `<button class="btn-primary p-3" onclick="handleEnroll('${course.course_id}', '${course.title}')">Apply</button>`;
+                        : `<button class="btn-primary p-3" onclick="handleEnroll('${course.course_id}', '${course.course_name}')">Apply</button>`;
 
                     return `
                         <div class="course-item flex justify-between items-center flex-wrap">
                             <div class="flex-grow min-w-0 pr-4">
-                                <h4 class="text-lg font-bold text-blue-800">${course.title} (${course.course_code || course.course_id})</h4>
+                                <h4 class="text-lg font-bold text-blue-800">${course.course_name} (${course.course_code || course.course_id})</h4>
                                 <p class="text-sm text-gray-700">${course.description}</p>
                                 <p class="text-xs text-gray-500 mt-1">Prereqs: ${course.prerequisites || 'None'}</p>
                             </div>

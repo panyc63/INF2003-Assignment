@@ -128,7 +128,7 @@ def enroll_student_in_course(student_id, course_id, semester="Fall 2025"):
     student_sql = text("""
         SELECT u.first_name 
         FROM students s 
-        JOIN users u ON s.student_id = u.id 
+        JOIN users u ON s.student_id = u.user_id 
         WHERE s.student_id = :sid
     """)
     student = db.session.execute(student_sql, {"sid": student_id}).first()
@@ -212,7 +212,7 @@ def weighted_search_and_merge(
             u.last_name AS instructor_last
         FROM courses c
         LEFT JOIN instructors i ON c.instructor_id = i.instructor_id
-        LEFT JOIN users u ON i.instructor_id = u.id
+        LEFT JOIN users u ON i.instructor_id = u.user_id
         WHERE {conditions}
     """)
     
@@ -297,7 +297,7 @@ def get_course_data():
              WHERE pr.course_id = c.course_id) AS prereqs_list
         FROM courses c
         LEFT JOIN instructors i ON c.instructor_id = i.instructor_id
-        LEFT JOIN users u ON i.instructor_id = u.id
+        LEFT JOIN users u ON i.instructor_id = u.user_id
     """)
     courses = db.session.execute(sql).all()
     
@@ -323,6 +323,7 @@ def get_course_data():
             "slots_left": c.max_capacity - (c.current_enrollment or 0),
             "instructor_name": instructor_name
         })
+        print(results)
     return results
 
 def get_course_details_by_id(course_id):
@@ -348,10 +349,10 @@ def get_student_data():
     sql = text("""
         SELECT s.student_id, u.university_id, u.first_name, u.last_name, s.major
         FROM students s
-        JOIN users u ON s.student_id = u.id
+        JOIN users u ON s.student_id = u.user_id
     """)
     students = db.session.execute(sql).all()
-    
+    print(students)
     return [
         {
             "id": s.student_id,
@@ -368,7 +369,7 @@ def get_instructor_data():
         SELECT i.instructor_id, u.first_name, u.last_name, u.email, 
                i.department_code, i.title
         FROM instructors i
-        JOIN users u ON i.instructor_id = u.id
+        JOIN users u ON i.instructor_id = u.user_id
     """)
     instructors = db.session.execute(sql).all()
     return [
@@ -384,11 +385,11 @@ def get_instructor_data():
 
 # Fetches all users for client-side login verification.
 def get_user_data():
-    sql = text("SELECT id, email, first_name, last_name, role FROM users")
+    sql = text("SELECT user_id, email, first_name, last_name, role FROM users")
     users = db.session.execute(sql).all()
     return [
         {
-            "id": u.id,
+            "id": u.user_id,
             "email": u.email,
             "name": f"{u.first_name} {u.last_name}", 
             "role": u.role,
@@ -441,7 +442,7 @@ def get_student_enrollments(student_id):
         FROM enrollments e
         JOIN courses c ON e.course_id = c.course_id
         LEFT JOIN instructors i ON c.instructor_id = i.instructor_id
-        LEFT JOIN users u ON i.instructor_id = u.id
+        LEFT JOIN users u ON i.instructor_id = u.user_id
         WHERE e.student_id = :sid AND e.status = 'Enrolled'
     """)
     enrollments = db.session.execute(sql, {"sid": student_id}).all()
@@ -498,7 +499,7 @@ def get_students_in_course(course_id):
             u.university_id
         FROM students s
         JOIN enrollments e ON s.student_id = e.student_id
-        JOIN users u ON s.student_id = u.id
+        JOIN users u ON s.student_id = u.user_id
         WHERE e.course_id = :cid AND e.status = 'Enrolled'
     """)
     students = db.session.execute(sql, {"cid": course_id}).all()
