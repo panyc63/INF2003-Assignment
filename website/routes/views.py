@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for
-from services import get_course_data,get_course_details_by_id
+from ..services.services import get_course_data,get_course_details_by_id
 
 #redirect blueprint
 views_bp = Blueprint('views', __name__)

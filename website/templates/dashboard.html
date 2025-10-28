@@ -60,7 +60,7 @@
             }
             enrollmentList.innerHTML = data.map(course => `
                 <div class="p-2 border border-yellow-200 bg-yellow-100 rounded-md">
-                    <strong class="text-blue-800">${course.course_id} - ${course.title}</strong>
+                    <strong class="text-blue-800">${course.course_id} - ${course.course_name}</strong>
                     <span class="text-sm block">Taught by: ${course.instructor_name} (${course.credits} Credits)</span>
                 </div>
             `).join('');

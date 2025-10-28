@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from services import (
+from ..services.services import (
     get_course_data,
     semantic_search,
     get_student_data,

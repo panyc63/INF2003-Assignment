@@ -1,13 +1,15 @@
 import json
 from flask import Flask
-from models import db
-from services import initialize_database
+from website.models import db
 
-from routes.views import views_bp
-from routes.api import api_bp
+# this import not needed after using mysql server
+# from services.services import initialize_database
+
+from website.routes.views import views_bp
+from website.routes.api import api_bp
 
 # Initialize Flask app
-app = Flask(__name__, template_folder='website', static_folder='website/static')
+app = Flask(__name__, template_folder='website/templates', static_folder='website/static')
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///ucms.db']
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:TYKroot%40321@localhost/inf2003-db'
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:PASSWORD@localhost/inf2003-db'

@@ -19,8 +19,9 @@
             </div>
             <button type="submit" class="btn-primary w-full">Login</button>
         </form>
-        <p class="mt-4 text-sm text-gray-500 text-center">Use student emails like <strong>student1@ucms.edu</strong> or <strong>student2@ucms.edu</strong> with password 'password'.</p>
-        <p class="mt-2 text-sm text-gray-500 text-center">Instructors can use <strong>instructor1@ucms.edu</strong> to log in.</p>
+        <p class="mt-4 text-sm text-gray-500 text-center">Mock student account : <strong> weiming.tan.23@sit.singaporetech.edu.sg</strong>.</p>
+        <p class="mt-2 text-sm text-gray-500 text-center">Mock instructor account : <strong>rajesh.k@sit.edu.sg</strong>.</p>
+        <p class="mt-2 text-sm text-gray-500 text-center">Password is  <strong>password (pre-entered)</strong></p>
     </div>
     
     <script>
@@ -45,6 +46,7 @@
                 let redirectUrl = '/dashboard';
                 let roleSpecificId = null;
                 // --- Fetch Role-Specific ID ---
+                console.log(user)
                 if (user.role === 'student') {
                     const studentData = await apiFetch(`/api/students/${user.id}`); 
                     if (studentData) {
@@ -54,7 +56,7 @@
                         redirectUrl = '/dashboard';
                     }
                 } else if (user.role === 'instructor') {
-                    const instructorData = await apiFetch(`/api/instructors/${user.instructor_id}`); 
+                    const instructorData = await apiFetch(`/api/instructors/${user.id}`); 
                     if (instructorData) {
                          roleSpecificId = instructorData.id; 
                          // Save the role-specific ID using the UN-PREFIXED KEY
@@ -75,7 +77,7 @@
                 localStorage.setItem('user_name', user.name);
                 
                 showStatusMessage(`Welcome, ${user.name} (${user.role})! Redirecting...`, 'success');
-                //window.location.href = redirectUrl;
+                window.location.href = redirectUrl;
 
             } else {
                 showStatusMessage('Login Failed: Invalid Email or Password.', 'error');
