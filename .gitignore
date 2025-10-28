@@ -1,0 +1,25 @@
+# ----------------------------------------
+# Your specific files
+# ----------------------------------------
+
+# Ignores the "pycache" folder inside the "route" folder
+/route/pycache/
+
+
+# ----------------------------------------
+# Standard Python Recommendations
+# ----------------------------------------
+
+# 1. Virtual Environment
+# This is the most important one. Never commit your venv!
+/venv/
+
+# 2. Standard Python Cache
+# Note: The default Python cache folder is "__pycache__" (with double underscores).
+# This will ignore all of them, everywhere in your project.
+**/__pycache__/
+
+# 3. Compiled Python files
+*.pyc
+*.pyo
+*.pyd
