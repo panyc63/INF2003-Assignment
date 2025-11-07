@@ -4,40 +4,142 @@
 
 {% block content %}
 <script>
-    // This function will run as soon as the page is loaded
-    document.addEventListener('DOMContentLoaded', (event) => {
-        populateCourseDropdown();
-    });
+    // NEW: Function to handle when a user clicks a dropdown item
+    function selectCourse(event, courseName) {
+        event.preventDefault(); 
+        const searchInput = document.getElementById('search-input');
+        searchInput.value = courseName;
+        const dropdownButton = document.querySelector('[data-toggle="dropdown"]');
+        dropdownButton.textContent = courseName;
+        handleSearch();
+    }
 
+    // This function populates the dropdown
     async function populateCourseDropdown() {
-        // 1. Find the dropdown menu element
         const dropdownMenu = document.getElementById('course-dropdown-menu');
-        let listContent = ''; // Start with an empty string
-
+        let listContent = ''; 
         try {
-            // 2. Fetch the data (assumes apiFetch is defined)
-            // I'm assuming 'results' is the array of courses.
             const courses = await apiFetch('/api/courses');
-            console.log(courses)
-            // 3. Check if we got results
             if (courses && courses.length > 0) {
-                // 4. Build the HTML string
                 listContent = courses.map(course => {
-                    return `<a class="dropdown-item" href="#">${course.course_name}</a>`
-                }).join(''); // <-- .join() is needed to turn the array into a single string
+                    const safeName = course.course_name.replace(/'/g, "\\'");
+                    return `<a class="dropdown-item" href="#" onclick="selectCourse(event, '${safeName}')">${course.course_name}</a>`
+                }).join(''); 
             } else {
                 listContent = `<p class="dropdown-item text-muted">No courses found.</p>`;
             }
-
         } catch (error) {
-            console.error("Failed to load courses:", error);
+            console.error("Failed to load courses for dropdown:", error);
             listContent = `<p class="dropdown-item text-danger">Error loading courses.</p>`;
         }
-
-        // 5. Update the dropdown menu with the new HTML
         dropdownMenu.innerHTML = listContent;
     }
+
+    // Function to load ALL courses from the SQL endpoint
+    async function loadAllCourses() {
+        try {
+            const courses = await apiFetch('/api/courses');
+            renderCourses(courses); 
+            
+            // --- NEW: Scroll to the results ---
+            document.getElementById('course-list-container').scrollIntoView({ behavior: 'smooth' });
+
+        } catch (error) {
+            console.error("Failed to load all courses:", error);
+            const container = document.getElementById('course-list-container');
+            container.innerHTML = '<p class="col-12 text-center text-danger">Error loading courses. Please try again.</p>';
+        }
+    }
+
+    // Function to handle the search button click
+    async function handleSearch() {
+        const searchInput = document.getElementById('search-input');
+        const query = searchInput.value;
+
+        if (!query) {
+            loadAllCourses(); 
+            return;
+        }
+
+        try {
+            const results = await apiFetch(`/api/search?q=${query}`);
+            renderCourses(results); 
+            
+            // --- NEW: Scroll to the results ---
+            document.getElementById('course-list-container').scrollIntoView({ behavior: 'smooth' });
+
+        } catch (error) {
+            console.error("Search failed:", error);
+            const container = document.getElementById('course-list-container');
+            container.innerHTML = '<p class="col-12 text-center text-danger">Search failed. Please try again.</p>';
+        }
+    }
+
+    // Helper function to render course cards into the container
+    function renderCourses(courses) {
+        const container = document.getElementById('course-list-container');
+        container.innerHTML = ''; 
+
+        if (!courses || courses.length === 0) {
+            container.innerHTML = '<p class="col-12 text-center h4 text-muted">No courses found.</p>';
+            return;
+        }
+
+        let imgIndex = 1;
+
+        courses.forEach(course => {
+            const courseId = course.course_id;
+            const courseName = course.course_name || course.title;
+            const instructor = course.instructor_name || 'TBA'; 
+            
+            const rating = course.score ? (course.score * 5).toFixed(1) : '4.5';
+            const ratingCount = course.score ? '(Search)' : '(250)';
+
+            const courseHtml = `
+                <div class="col-lg-4 col-md-6 pb-4">
+                    <a class="courses-list-item position-relative d-block overflow-hidden mb-2" 
+                       href="${'{{ url_for("views.course_detail", course_id="TEMP") }}'.replace('TEMP', courseId)}">
+                        
+                        <img class="img-fluid" src="{{ url_for('static', filename='img/courses-') }}${imgIndex}.jpg" alt="Course Image">
+                        
+                        <div class="courses-text">
+                            <h4 class="text-center text-white px-3">${courseName}</h4>
+                            <div class="border-top w-100 mt-3">
+                                <div class="d-flex justify-content-between p-4">
+                                    <span class="text-white"><i class="fa fa-user mr-2"></i>${instructor}</span>
+                                    <span class="text-white"><i class="fa fa-star mr-2"></i>${rating}
+                                        <small>${ratingCount}</small>
+                                    </span>
+                                D</div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            `;
+            
+            container.innerHTML += courseHtml;
+            imgIndex = (imgIndex % 6) + 1;
+        });
+    }
+
+    // Run all setup functions when the page is loaded
+    document.addEventListener('DOMContentLoaded', (event) => {
+        populateCourseDropdown();
+        loadAllCourses(); 
+        
+        const searchButton = document.getElementById('search-button');
+        searchButton.addEventListener('click', handleSearch);
+        
+        const searchInput = document.getElementById('search-input');
+        
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                handleSearch();
+            }
+        });
+    });
 </script>
+
 <div class="jumbotron jumbotron-fluid page-header position-relative overlay-bottom" style="margin-bottom: 90px;">
     <div class="container text-center py-5">
         <h1 class="text-white display-1">Courses</h1>
@@ -55,141 +157,32 @@
                         <a class="dropdown-item" href="#">Loading...</a>
                     </div>
                 </div>
-                <input type="text" class="form-control border-light" style="padding: 30px 25px;" placeholder="Keyword">
+                <input type="text" id="search-input" class="form-control border-light" style="padding: 30px 25px;"
+                    placeholder="Search for 'database' or 'programming'...">
                 <div class="input-group-append">
-                    <button class="btn btn-secondary px-4 px-lg-5">Search</button>
+                    <button class="btn btn-secondary px-4 px-lg-5" id="search-button">Search</button>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
 <div class="container-fluid py-5">
     <div class="container py-5">
         <div class="row mx-0 justify-content-center">
             <div class="col-lg-8">
                 <div class="section-title text-center position-relative mb-5">
                     <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Our Courses</h6>
-                    <h1 class="display-4">Checkout New Releases Of Our Courses</h1>
+                    <h1 class="display-4">All Available Courses</h1>
                 </div>
             </div>
         </div>
-        <div class="row">
-            <div class="col-lg-4 col-md-6 pb-4">
-                <a class="courses-list-item position-relative d-block overflow-hidden mb-2" href="#">
-                    <img class="img-fluid" src="{{ url_for('static', filename='img/courses-1.jpg') }}" alt="">
-                    <div class="courses-text">
-                        <h4 class="text-center text-white px-3">Web design & development courses for
-                            beginners</h4>
-                        <div class="border-top w-100 mt-3">
-                            <div class="d-flex justify-content-between p-4">
-                                <span class="text-white"><i class="fa fa-user mr-2"></i>Jhon Doe</span>
-                                <span class="text-white"><i class="fa fa-star mr-2"></i>4.5
-                                    <small>(250)</small></span>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-lg-4 col-md-6 pb-4">
-                <a class="courses-list-item position-relative d-block overflow-hidden mb-2" href="#">
-                    <img class="img-fluid" src="{{ url_for('static', filename='img/courses-2.jpg') }}" alt="">
-                    <div class="courses-text">
-                        <h4 class="text-center text-white px-3">Web design & development courses for
-                            beginners</h4>
-                        <div class="border-top w-100 mt-3">
-                            <div class="d-flex justify-content-between p-4">
-                                <span class="text-white"><i class="fa fa-user mr-2"></i>Jhon Doe</span>
-                                <span class="text-white"><i class="fa fa-star mr-2"></i>4.5
-                                    <small>(250)</small></span>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-lg-4 col-md-6 pb-4">
-                <a class="courses-list-item position-relative d-block overflow-hidden mb-2" href="#">
-                    <img class="img-fluid" src="{{ url_for('static', filename='img/courses-3.jpg') }}" alt="">
-                    <div class="courses-text">
-                        <h4 class="text-center text-white px-3">Web design & development courses for
-                            beginners</h4>
-                        <div class="border-top w-100 mt-3">
-                            <div class="d-flex justify-content-between p-4">
-                                <span class="text-white"><i class="fa fa-user mr-2"></i>Jhon Doe</span>
-                                <span class="text-white"><i class="fa fa-star mr-2"></i>4.5
-                                    <small>(250)</small></span>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-lg-4 col-md-6 pb-4">
-                <a class="courses-list-item position-relative d-block overflow-hidden mb-2" href="#">
-                    <img class="img-fluid" src="{{ url_for('static', filename='img/courses-4.jpg') }}" alt="">
-                    <div class="courses-text">
-                        <h4 class="text-center text-white px-3">Web design & development courses for
-                            beginners</h4>
-                        <div class="border-top w-100 mt-3">
-                            <div class="d-flex justify-content-between p-4">
-                                <span class="text-white"><i class="fa fa-user mr-2"></i>Jhon Doe</span>
-                                <span class="text-white"><i class="fa fa-star mr-2"></i>4.5
-                                    <small>(250)</small></span>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-lg-4 col-md-6 pb-4">
-                <a class="courses-list-item position-relative d-block overflow-hidden mb-2" href="#">
-                    <img class="img-fluid" src="{{ url_for('static', filename='img/courses-5.jpg') }}" alt="">
-                    <div class="courses-text">
-                        <h4 class="text-center text-white px-3">Web design & development courses for
-                            beginners</h4>
-                        <div class="border-top w-100 mt-3">
-                            <div class="d-flex justify-content-between p-4">
-                                <span class="text-white"><i class="fa fa-user mr-2"></i>Jhon Doe</span>
-                                <span class="text-white"><i class="fa fa-star mr-2"></i>4.5
-                                    <small>(250)</small></span>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-lg-4 col-md-6 pb-4">
-                <a class="courses-list-item position-relative d-block overflow-hidden mb-2" href="#">
-                    <img class="img-fluid" src="{{ url_for('static', filename='img/courses-6.jpg') }}" alt="">
-                    <div class="courses-text">
-                        <h4 class="text-center text-white px-3">Web design & development courses for
-                            beginners</h4>
-                        <div class="border-top w-100 mt-3">
-                            <div class="d-flex justify-content-between p-4">
-                                <span class="text-white"><i class="fa fa-user mr-2"></i>Jhon Doe</span>
-                                <span class="text-white"><i class="fa fa-star mr-2"></i>4.5
-                                    <small>(250)</small></span>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-12">
-                <nav aria-label="Page navigation">
-                    <ul class="pagination pagination-lg justify-content-center mb-0">
-                        <li class="page-item disabled">
-                            <a class="page-link rounded-0" href="#" aria-label="Previous">
-                                <span aria-hidden="true">&laquo;</span>
-                                <span class="sr-only">Previous</span>
-                            </a>
-                        </li>
-                        <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                        <li class="page-item"><a class="page-link" href="#">2</a></li>
-                        <li class="page-item"><a class="page-link" href="#">3</a></li>
-                        <li class="page-item">
-                            <a class="page-link rounded-0" href="#" aria-label="Next">
-                                <span aria-hidden="true">&raquo;</span>
-                                <span class="sr-only">Next</span>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
+        
+        <div class="row" id="course-list-container">
+            <div class="col-12 text-center">
+                <div class="spinner-border text-secondary" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="sr-only">Loading courses...</span>
+                </div>
             </div>
         </div>
     </div>

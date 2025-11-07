@@ -1,9 +1,61 @@
-from ..models import db, User, Student, Instructor, Course, Enrollment, Prerequisites, Assignment, Submission
+from .. import db, mongo
+from ..models import User, Student, Instructor, Course, Enrollment, Prerequisites, Assignment, Submission
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func, or_, text
+from sqlalchemy.orm import joinedload, aliased
 from typing import Dict, Any, List
 from datetime import datetime
+def get_course_details_by_ids_list(course_ids: List[str]) -> List[Dict[str, Any]]:
+    """
+    Fetches full, rich course details for a specific list of course IDs
+    using the SQLAlchemy ORM.
+    """
+    if not course_ids:
+        return []
 
+    # --- This is a more advanced ORM query ---
+    # 1. We alias User to avoid name conflicts
+    InstructorUser = aliased(User)
+    
+    # 2. We query the Course model
+    courses = db.session.query(Course)\
+        .filter(Course.course_id.in_(course_ids))\
+        .options(
+            # 3. We "join" the related tables to get instructor info
+            joinedload(Course.instructor)
+            .joinedload(Instructor.user.of_type(InstructorUser))
+        ).all()
+
+    # 4. We build the same rich JSON as your get_course_data function
+    results = []
+    for c in courses:
+        instructor_name = "TBA"
+        if c.instructor and c.instructor.user:
+            instructor_name = f"{c.instructor.user.first_name} {c.instructor.user.last_name}"
+        
+        # We don't need prerequisites here, but you could add them
+        
+        results.append({
+            "course_id": c.course_id,
+            "course_code": c.course_code,
+            "course_name": c.course_name,
+            "description": c.description,
+            "prerequisites": "None", # Add logic if needed
+            "credits": c.credits,
+            "academic_term": c.academic_term,
+            "max_capacity": c.max_capacity,
+            "current_enrollment": c.current_enrollment,
+            "slots_left": c.max_capacity - (c.current_enrollment or 0),
+            "instructor_name": instructor_name
+        })
+
+    # --- Re-order the results to match the semantic search score ---
+    # Create a map for quick lookup
+    results_map = {r['course_id']: r for r in results}
+    # Return in the order provided by course_ids
+    ordered_results = [results_map[id] for id in course_ids if id in results_map]
+    
+    return ordered_results
 # Function for instructor name
 def get_instructor_full_name_by_id(instructor_id):
     """Fetches an instructor's full name by their ID using raw SQL."""
@@ -354,18 +406,20 @@ def get_instructor_full_name(course):
     return "TBA"
 
 # Fetches currently enrolled courses for a given student ID.
+# Fetches currently enrolled courses for a given student ID.
 def get_student_enrollments(student_id):
     sql = text("""
         SELECT 
             c.course_id, c.course_name, c.credits, c.academic_term,
             e.semester,
+            e.status,  -- <-- THIS WAS THE MISSING LINE
             u.first_name AS instructor_first, 
             u.last_name AS instructor_last
         FROM enrollments e
         JOIN courses c ON e.course_id = c.course_id
         LEFT JOIN instructors i ON c.instructor_id = i.instructor_id
         LEFT JOIN users u ON i.instructor_id = u.user_id
-        WHERE e.student_id = :sid AND e.status = 'Enrolled'
+        WHERE e.student_id = :sid AND (e.status = 'Enrolled' OR e.status = 'Completed') -- Get all records
     """)
     enrollments = db.session.execute(sql, {"sid": student_id}).all()
 
@@ -383,6 +437,7 @@ def get_student_enrollments(student_id):
             "academic_term": enrollment.academic_term,
             "instructor_name": instructor_name,
             "semester": enrollment.semester,
+            "status": enrollment.status  # <-- ADDED THIS FIELD TO THE JSON
         })
     
     return results

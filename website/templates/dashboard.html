@@ -36,104 +36,216 @@
     </div>
     
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!currentState.loggedIn) {
-                return;
-            }
+    // --- Store enrollments data globally on this page ---
+    let allStudentEnrollments = [];
 
-            document.getElementById('welcome-message').textContent = 
-                `Welcome back, ${currentState.userName} (ID: ${currentState.studentId})`;
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!currentState.loggedIn) { return; }
+
+        document.getElementById('welcome-message').textContent = 
+            `Welcome back, ${currentState.userName} (ID: ${currentState.studentId})`;
+        
+        loadStudentEnrollments();
+        document.getElementById('course-search-form').addEventListener('submit', handleCourseSearch);
+        handleShowAllCourses(); 
+    });
+
+
+    async function loadStudentEnrollments() {
+        const enrollmentList = document.getElementById('enrollment-list');
+        try {
+            allStudentEnrollments = await apiFetch(`/api/student/${currentState.studentId}/enrollments`);
             
-            loadStudentEnrollments();
-            document.getElementById('course-search-form').addEventListener('submit', handleCourseSearch);
-            handleShowAllCourses(); 
-        });
-
-
-        async function loadStudentEnrollments() {
-            const enrollmentList = document.getElementById('enrollment-list');
-            const data = await apiFetch(`/api/student/${currentState.studentId}/enrollments`);
-            
-            if (!data || data.length === 0) {
+            if (!allStudentEnrollments || allStudentEnrollments.length === 0) {
                 enrollmentList.innerHTML = '<p class="text-gray-500 mx-3">You are not currently enrolled in any courses.</p>';
                 return;
             }
-            enrollmentList.innerHTML = data.map(course => `
+            enrollmentList.innerHTML = allStudentEnrollments.map(course => `
                 <div class="p-2 border border-yellow-200 bg-yellow-100 rounded-md">
-                    <strong class="text-blue-800">${course.course_id} - ${course.course_name}</strong>
+                    <strong class="text-blue-800">${course.course_id} - ${course.course_name || course.title}</strong>
                     <span class="text-sm block">Taught by: ${course.instructor_name} (${course.credits} Credits)</span>
+                    <span class="text-xs font-semibold text-gray-600 bg-gray-200 px-2 py-1 rounded-full">${course.semester}</span>
                 </div>
             `).join('');
+        } catch (error) {
+            console.error("Failed to load enrollments:", error);
+            enrollmentList.innerHTML = '<p class="text-red-500 mx-3">Could not load your enrollments.</p>';
         }
+    }
 
-        async function handleShowAllCourses() {
+    async function handleShowAllCourses() {
+        try {
             const results = await apiFetch('/api/courses');
             if (results) {
                 displayCourseResults(results);
             }
+        } catch (error) {
+            console.error("Failed to show all courses:", error);
         }
+    }
 
-        async function handleCourseSearch(event) {
-            event.preventDefault();
-            const query = document.getElementById('search-query').value;
-            const results = await apiFetch('/api/search', 'POST', { query: query });
-            
-            if (results) {
-                displayCourseResults(results);
-            }
-        }
+    // --- ⬇️ NEW "SMART HYBRID" SEARCH FUNCTION ⬇️ ---
+    // In your <script> block in dashboard.html
+
+    async function handleCourseSearch(event) {
+        event.preventDefault();
+        const query = document.getElementById('search-query').value.toLowerCase();
         
-        function displayCourseResults(courses) {
-            const resultsList = document.getElementById('course-results-list');
-            if (!resultsList) return;
+        // --- 1. Check for LOCAL context ("my courses") ---
+        const localKeywords = ['my', 'enrolled', 'completed', 'my schedule'];
+        const isLocalSearch = localKeywords.some(kw => query.includes(kw));
 
-            let listContent = '';
+        if (isLocalSearch) {
+            // --- LOCAL (SQL) SEARCH ---
+            let localQuery = query.replace(/my|courses|in|enrolled|completed|schedule|of/g, '').trim();
+            localQuery = localQuery
+                .replace(/year (\d)/g, 'y$1')
+                .replace(/trimester (\d)/g, 't$1')
+                .replace(/tri (\d)/g, 't$1')
+                .replace(/\s/g, ''); 
+            
+            const results = allStudentEnrollments.filter(course => {
+                const searchCorpus = `${course.course_name.toLowerCase()} ${course.course_id.toLowerCase()} ${course.semester.toLowerCase()}`;
+                return searchCorpus.includes(localQuery);
+            });
+            
+            displayCourseResults(results, true);
+            document.getElementById('course-results-list').scrollIntoView({ behavior: 'smooth' });
 
-            if (courses.length === 0) {
-                listContent = `<p class="text-center text-red-500 p-6">No courses matched your query or filter criteria.</p>`;
-            } else {
-                listContent = courses.map(course => {
-                    const courseIdForEnroll = course.course_code || course.course_id; 
-                    const isFull = course.slots_left <= 0;
-                    const buttonHtml = isFull 
-                        ? `<button class="btn-secondary bg-red-100 text-red-700 cursor-not-allowed" disabled>Full</button>`
-                        : `<button class="btn-primary p-3" onclick="handleEnroll('${course.course_id}', '${course.course_name}')">Apply</button>`;
+        } else {
+            // --- GLOBAL (NoSQL) SEARCH ---
+            let semanticQuery = query;
+            let params = new URLSearchParams();
 
-                    return `
-                        <div class="course-item flex justify-between items-center flex-wrap">
-                            <div class="flex-grow min-w-0 pr-4">
-                                <h4 class="text-lg font-bold text-blue-800">${course.course_name} (${course.course_code || course.course_id})</h4>
-                                <p class="text-sm text-gray-700">${course.description}</p>
-                                <p class="text-xs text-gray-500 mt-1">Prereqs: ${course.prerequisites || 'None'}</p>
-                            </div>
-                            <div class="text-right space-y-1 mt-2 sm:mt-0">
-                                <p class="text-sm font-semibold">Taught by: ${course.instructor_name}</p>
-                                <p class="text-sm ${isFull ? 'text-red-600' : 'text-green-600'}">
-                                    ${course.slots_left} / ${course.max_capacity || 'N/A'} Slots Left
-                                </p>
-                                ${buttonHtml}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+            // --- Filter 1: Level (Year) ---
+            const levelMap = {
+                'first year': 1000, 'year 1': 1000, 'year one': 1000, 'y1': 1000, '1000 level': 1000,
+                'second year': 2000, 'year 2': 2000, 'year two': 2000, 'y2': 2000, '2000 level': 2000,
+                'third year': 3000, 'year 3': 3000, 'year three': 3000, 'y3': 3000, '3000 level': 3000,
+            };
+            for (const [key, value] of Object.entries(levelMap)) {
+                if (query.includes(key)) {
+                    params.set('level', value);
+                    semanticQuery = semanticQuery.replace(key, ''); 
+                    break;
+                }
             }
 
-            resultsList.innerHTML = listContent;
+            // --- Filter 2: Term (Trimester) ---
+            const termMap = {
+                'trimester 1': 'Fall 2025', 'tri 1': 'Fall 2025', 't1': 'Fall 2025', 'fall': 'Fall 2025',
+                'trimester 2': 'Spring 2026', 'tri 2': 'Spring 2026', 't2': 'Spring 2026', 'spring': 'Spring 2026',
+                'trimester 3': 'Spring 2026', 'tri 3': 'Spring 2026', 't3': 'Spring 2026'
+            };
+            for (const [key, value] of Object.entries(termMap)) {
+                if (query.includes(key)) {
+                    params.set('term', value);
+                    semanticQuery = semanticQuery.replace(key, '');
+                    break;
+                }
+            }
+            
+            // --- 3. Build and send the API request ---
+            semanticQuery = semanticQuery.replace(/courses|course|in|by|for|of/g, '').trim();
+            
+            // --- ⬇️ THIS IS THE FIX ⬇️ ---
+            // If the query is empty OR the semantic query is empty, just show all courses.
+            if (!query.trim() || !semanticQuery.trim()) {
+                handleShowAllCourses();
+                return; // Stop execution
+            }
+            // --- ⬆️ END OF FIX ⬆️ ---
 
-            resultsList.innerHTML += `<button class="btn-secondary w-full mt-4 py-2" onclick="handleShowAllCourses()">Show All Courses</button>`;
+            params.set('q', semanticQuery);
+
+            try {
+                const results = await apiFetch(`/api/search?${params.toString()}`);
+                if (results) {
+                    displayCourseResults(results, false); 
+                }
+            } catch (error) {
+                console.error("Search failed:", error);
+                // This error will now show the *real* message, e.g. "No query provided"
+                showStatusMessage(`Search failed: ${error.message}`, 'error');
+            }
+        }
+    }
+    function displayCourseResults(courses, isLocalSearch = false) {
+        const resultsList = document.getElementById('course-results-list');
+        if (!resultsList) return;
+
+        let listContent = '';
+
+        if (courses.length === 0) {
+            listContent = `<p class="text-center text-red-500 p-6">No courses matched your query.</p>`;
+        } else {
+            listContent = courses.map(course => {
+                // --- Handle different data sources ---
+                const courseId = course.course_id;
+                const courseCode = course.course_code || courseId;
+                const courseName = course.course_name || course.title;
+                const description = course.description || 'Your enrolled course.';
+                const prereqs = course.prerequisites || 'N/A';
+                const instructor = course.instructor_name || 'N/A';
+                const slotsLeft = course.slots_left ?? 'N/A'; 
+                const maxCap = course.max_capacity || 'N/A';
+                
+                // --- Button Logic ---
+                let buttonHtml = '';
+                if (isLocalSearch) {
+                    // This is from your enrollments, show status
+                    const status = course.status || 'Completed';
+                    buttonHtml = `<button class="btn-secondary ${status === 'Enrolled' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'} cursor-not-allowed" disabled>${status}</button>`;
+                } else {
+                    // This is a global search, show Apply/Full button
+                    const isFull = slotsLeft === 0;
+                    buttonHtml = isFull 
+                        ? `<button class="btn-secondary bg-red-100 text-red-700 cursor-not-allowed" disabled>Full</button>`
+                        : `<button class="btn-primary p-3" onclick="handleEnroll('${courseId}', '${courseName}')">Apply</button>`;
+                }
+
+                return `
+                    <div class="course-item flex justify-between items-center flex-wrap">
+                        <div class="flex-grow min-w-0 pr-4">
+                            <h4 class="text-lg font-bold text-blue-800">${courseName} (${courseCode})</h4>
+                            <p class="text-sm text-gray-700">${description}</p>
+                            <p class="text-xs text-gray-500 mt-1">Prereqs: ${prereqs}</p>
+                        </div>
+                        <div class="text-right space-y-1 mt-2 sm:mt-0">
+                            <p class="text-sm font-semibold">Taught by: ${instructor}</p>
+                            <p class="text-sm ${slotsLeft === 0 ? 'text-red-600' : 'text-green-600'}">
+                                ${slotsLeft} / ${maxCap} Slots
+                            </p>
+                            ${buttonHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
-        async function handleEnroll(courseId, courseTitle) {
-            const data = await apiFetch('/api/enroll', 'POST', {
-                student_id: currentState.studentId,
-                course_id: courseId 
+        resultsList.innerHTML = listContent;
+        resultsList.innerHTML += `<button class="btn-secondary w-full mt-4 py-2" onclick="handleShowAllCourses()">Show All Courses</button>`;
+        document.getElementById('course-results-list').scrollIntoView({ behavior: 'smooth' })
+    }
+
+    async function handleEnroll(courseId, courseTitle) {
+        try {
+            const data = await apiFetch('/api/enroll', {
+                method: 'POST',
+                body: { 
+                    student_id: currentState.studentId,
+                    course_id: courseId 
+                }
             });
 
             if (data && data.message) {
                 showStatusMessage(data.message, 'success');
-                loadStudentEnrollments();
+                loadStudentEnrollments(); 
                 handleShowAllCourses(); 
             }
+        } catch (error) {
+            showStatusMessage(error.message, 'error');
         }
-    </script>
+    }
+</script>
 {% endblock %}

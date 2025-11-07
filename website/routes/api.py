@@ -1,7 +1,12 @@
 from flask import Blueprint, request, jsonify
+# --- New Imports for NoSQL Search ---
+from website import mongo
+from sentence_transformers import SentenceTransformer
+# -------------------------------------
 from ..services.services import (
     get_course_data,
-    semantic_search,
+    # semantic_search,  <-- We removed this old SQL search
+    get_course_details_by_id, # <-- Added this for the single course route
     get_student_data,
     get_student_enrollments,
     enroll_student_in_course,
@@ -9,10 +14,17 @@ from ..services.services import (
     get_student_details_by_user_id,
     get_instructor_details_by_user_id,
     get_instructor_courses,
-    get_students_in_course
+    get_students_in_course,
+    get_course_details_by_ids_list
 )
+
 #api blueprint
 api_bp = Blueprint('api', __name__, url_prefix='/api')
+
+# --- Load the NLP model once ---
+model = SentenceTransformer('all-MiniLM-L6-v2')
+# -------------------------------
+
 
 # Retrieve all course data including instructor name and slots remaining.
 @api_bp.route('/courses', methods=['GET'])
@@ -23,7 +35,8 @@ def get_courses():
 # Retrieve all course data including instructor name and slots remaining.
 @api_bp.route('/courses/<string:course_id>', methods=['GET'])
 def get_course(course_id):
-    course = get_course_data(course_id)
+    # --- FIX: Use the correct function for a single course ---
+    course = get_course_details_by_id(course_id)
     if course:
         return jsonify(course)
     return jsonify({"error": "Course not found"}), 404
@@ -34,15 +47,100 @@ def get_students():
     all_students = get_student_data()
     return jsonify(all_students)
 
-# Handle semantic and keyword-based search queries.
-@api_bp.route('/search', methods=['POST'])
+# In website/routes/api.py
+
+# In website/routes/api.py
+
+# In website/routes/api.py
+
+@api_bp.route('/search', methods=['GET'])
 def search_courses():
-    data = request.json
-    query = data.get('query', '')
+    # --- Get all parameters from URL ---
+    query = request.args.get('q', '')
+    term = request.args.get('term', None)
+    level = request.args.get('level', None)
+    instructor = request.args.get('instructor', None)
+
+    if not query:
+        return jsonify({"error": "No query provided"}), 400
+        
+    query_vector = model.encode(query).tolist()
     
-    results = semantic_search(query)
+    # --- Build the Pre-Filter ---
+    # This filter syntax is NEW and matches the "filter" index type
+    filter_conditions = []
     
-    return jsonify(results)
+    if term:
+        # 'filter' type uses the 'equals' operator for strings
+        filter_conditions.append({
+            "equals": {
+                "value": term,
+                "path": "academic_term"
+            }
+        })
+    
+    if level:
+        try:
+            # 'filter' type also uses 'equals' for numbers
+            filter_conditions.append({
+                "equals": {
+                    "value": int(level),
+                    "path": "course_level"
+                }
+            })
+        except ValueError:
+            pass # Ignore invalid level
+
+    if instructor:
+        # 'filter' type uses 'equals' for strings
+        filter_conditions.append({
+            "equals": {
+                "value": instructor,
+                "path": "instructor_name"
+            }
+        })
+
+    # --- Create the Vector Search Pipeline ---
+    pipeline = [
+        {
+            "$vectorSearch": {
+                "index": "vector_search",
+                "path": "embedding",
+                "queryVector": query_vector,
+                "numCandidates": 100,
+                "limit": 10,
+                # --- This 'filter' clause is different ---
+                "filter": {
+                    "compound": {
+                        "must": filter_conditions
+                    }
+                } if filter_conditions else {} # Only add filter if it exists
+            }
+        },
+        {
+            "$project": {
+                "_id": 0,
+                "course_id": 1,
+                "score": { "$meta": "vectorSearchScore" }
+            }
+        }
+    ]
+    
+    # --- The rest of your function (Hydration) is still correct ---
+    mongo_results = list(mongo.db.courses.aggregate(pipeline))
+    if not mongo_results:
+        return jsonify([])
+
+    course_ids = [res['course_id'] for res in mongo_results]
+    
+    hydrated_results = get_course_details_by_ids_list(course_ids)
+    
+    score_map = {res['course_id']: res['score'] for res in mongo_results}
+    for res in hydrated_results:
+        res['score'] = score_map.get(res['course_id'], 0)
+
+    return jsonify(hydrated_results)
+
 
 # Handle student enrollment in a course.
 @api_bp.route('/enroll', methods=['POST'])
