@@ -1,9 +1,3 @@
-Here is a complete `README.md` file for your project.
-
-You can save this file as `README.md` in your project's root folder (`INF2003-Assignment/README.md`).
-
------
-
 # University Course Management System (INF2003)
 
 This is a Flask web application for the INF2003 Database Systems project. It uses a hybrid database system to manage university courses and provide a powerful, natural-language semantic search for students.
@@ -73,22 +67,7 @@ pip install -r requirements.txt
 
 **C. Configure the NoSQL Database (MongoDB Atlas)**
 
-1.  Create a new, free **M0 cluster** on MongoDB Atlas.
-
-2.  Under **Network Access**, add an IP Address. Click `ALLOW ACCESS FROM ANYWHERE` (`0.0.0.0/0`).
-
-3.  Under **Database Access**, create a new database user (e.g., `inf2003-admin` with a password).
-
-4.  Go to **Database**, click **Connect** \> **Drivers**, and copy your **Connection String**.
-
-5.  Open `config.py` again.
-
-6.  Update the `MONGO_URI` with your connection string. **Remember to add your database name (e.g., `ucms_db`)** before the `?`.
-
-    ```python
-    # in config.py
-    MONGO_URI = "mongodb+srv://inf2003-admin:YOUR_PASSWORD@...mongodb.net/ucms_db?appName=Cluster0"
-    ```
+1. MongoDB is setup already, do not change URL
 
 ### 3\. Populate Your Databases (Required One-Time Step)
 
@@ -101,56 +80,6 @@ This is the most important step. You must populate your databases in this order.
       * Create all tables (`users`, `courses`, `enrollments`, etc.).
       * Populate them with all the PDF-accurate course data.
       * Create your "Alex Cross" student profile and academic history.
-
-**B. Populate NoSQL (Sync)**
-
-1.  Now that your SQL database has data, you must sync it to MongoDB.
-2.  In your terminal (with your `venv` active), run:
-    ```bash
-    python generate_vectors.py
-    ```
-3.  This script will read from your local MySQL, generate vectors for each course, and upload them to your MongoDB Atlas cluster.
-
-### 4\. Create the Atlas Search Index
-
-Your MongoDB cluster now has the data, but it isn't indexed for search.
-
-1.  In your MongoDB Atlas dashboard, go to your `courses` collection.
-
-2.  Click the **Search** tab.
-
-3.  Click **Create Search Index** and select the **JSON Editor**.
-
-4.  Set the **Index Name** to `vector_search`.
-
-5.  In the JSON editor, paste this exact configuration:
-
-    ```json
-    {
-      "fields": [
-        {
-          "type": "vector",
-          "path": "embedding",
-          "numDimensions": 384,
-          "similarity": "cosine"
-        },
-        {
-          "type": "filter",
-          "path": "academic_term"
-        },
-        {
-          "type": "filter",
-          "path": "course_level"
-        },
-        {
-          "type": "filter",
-          "path": "instructor_name"
-        }
-      ]
-    }
-    ```
-
-6.  Click **Create Index**. Wait 1-2 minutes for the status to change from "Building" to **"Active"**.
 
 ### 5\. Run the Application
 
