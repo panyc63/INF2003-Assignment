@@ -1,47 +1,210 @@
 /*
 =========================================================
-DATABASE-SQL-SCRIPT.SQL
-This is the complete reset script for the INF2003 UCMS project.
+INF2003 UCMS - COMPLETE DATABASE CREATION SCRIPT
+=========================================================
+This script integrates the schema (CREATE TABLE) and the 
+final data (INSERT) into one file.
+
 It performs the following actions:
-1. Temporarily disables safety checks to allow truncation.
-2. Truncates (empties) all tables in the correct order.
-3. Re-enables safety checks.
-4. Inserts all parent data (Users, Instructors, Students).
-5. Inserts all 100+ PDF-accurate courses.
-6. Inserts all PDF-accurate prerequisites.
-7. Inserts the academic history for the "Alex Cross" student.
-8. Updates the enrollment counts for the "Enrolled" courses.
+1. Temporarily disables safety checks.
+2. Drops all tables if they exist to ensure a clean slate.
+3. Re-enables foreign key checks.
+4. Creates the complete database schema (users, courses, etc.).
+5. Inserts all parent data (Users, Instructors, Students).
+6. Inserts all 100+ PDF-accurate courses.
+7. Inserts all PDF-accurate prerequisites.
+8. Inserts the academic history for the "Alex Cross" student.
+9. Updates the enrollment counts for the "Enrolled" courses.
+10. Resets safety checks.
 =========================================================
 */
 
 /* =========================================================
-STEP 1: TEMPORARILY DISABLE SAFETY CHECKS
+PART 1: RESET AND CREATE SCHEMA
+(Combines safety checks from NEW and DROP/CREATE from OLD)
 =========================================================
 */
+
+-- Disable checks to allow dropping tables and running updates
 SET SQL_SAFE_UPDATES = 0;
 SET FOREIGN_KEY_CHECKS = 0;
 
-/* =========================================================
-STEP 2: TRUNCATE ALL TABLES
-We wipe all data to start fresh.
-=========================================================
-*/
-TRUNCATE TABLE prerequisites;
-TRUNCATE TABLE enrollments;
-TRUNCATE TABLE submissions;
-TRUNCATE TABLE assignments;
-TRUNCATE TABLE courses;
-TRUNCATE TABLE students;
-TRUNCATE TABLE instructors;
-TRUNCATE TABLE users;
+-- Drop tables in reverse order of dependency if they already exist
+DROP TABLE IF EXISTS submissions;
+DROP TABLE IF EXISTS assignments;
+DROP TABLE IF EXISTS enrollments;
+DROP TABLE IF EXISTS prerequisites;
+DROP TABLE IF EXISTS courses;
+DROP TABLE IF EXISTS instructors;
+DROP TABLE IF EXISTS students;
+DROP TABLE IF EXISTS users;
+
+-- Re-enable foreign key checks *before* creating tables
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- Central table for all user authentication and basic info
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    university_id VARCHAR(50) UNIQUE NOT NULL, -- e.g., SIT student/staff ID
+    email VARCHAR(120) UNIQUE NOT NULL,
+    password_hash VARCHAR(256) NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    role VARCHAR(20) NOT NULL CHECK (role IN ('student', 'instructor', 'admin')),
+    date_joined DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_login DATETIME,
+    is_active BOOLEAN DEFAULT TRUE
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_users_university_id ON users (university_id);
+CREATE INDEX idx_users_role ON users (role);
+
+-- Extends the users table with student-specific data
+CREATE TABLE students (
+    student_id INT PRIMARY KEY,
+    enrollment_year INT NOT NULL,
+    major VARCHAR(100),
+    expected_graduation VARCHAR(10),
+    gpa DECIMAL(3, 2) CHECK (gpa >= 0.0 AND gpa <= 5.0), -- Assuming a 5.0 scale
+    current_standing VARCHAR(20) DEFAULT 'Good',
+    
+    CONSTRAINT fk_student_user
+        FOREIGN KEY(student_id) 
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Extends the users table with instructor-specific data
+CREATE TABLE instructors (
+    instructor_id INT PRIMARY KEY,
+    department_code VARCHAR(50) NOT NULL,
+    office_location VARCHAR(50),
+    office_hours TEXT,
+    title VARCHAR(50),
+
+    CONSTRAINT fk_instructor_user
+        FOREIGN KEY(instructor_id) 
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Table for all courses offered
+CREATE TABLE courses (
+    course_id VARCHAR(10) PRIMARY KEY, -- Using String ID like "INF2001"
+    course_code VARCHAR(10) UNIQUE NOT NULL,
+    course_name VARCHAR(150) NOT NULL,
+    description TEXT,
+    credits INT NOT NULL DEFAULT 3,
+    academic_term VARCHAR(20),
+    max_capacity INT DEFAULT 30,
+    current_enrollment INT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    instructor_id INT,
+
+    CONSTRAINT fk_course_instructor
+        FOREIGN KEY(instructor_id) 
+        REFERENCES instructors(instructor_id)
+        ON DELETE SET NULL -- If instructor is deleted, course remains but unassigned
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_courses_course_code ON courses (course_code);
+CREATE INDEX idx_courses_academic_term ON courses (academic_term);
+
+-- Junction table for course prerequisites
+CREATE TABLE prerequisites (
+    course_id VARCHAR(10) NOT NULL,
+    requires_course_id VARCHAR(10) NOT NULL,
+    
+    PRIMARY KEY (course_id, requires_course_id),
+    
+    CONSTRAINT fk_prereq_course
+        FOREIGN KEY(course_id) 
+        REFERENCES courses(course_id)
+        ON DELETE CASCADE,
+    
+    CONSTRAINT fk_prereq_requires
+        FOREIGN KEY(requires_course_id) 
+        REFERENCES courses(course_id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Junction table linking students to courses
+CREATE TABLE enrollments (
+    student_id INT NOT NULL,
+    course_id VARCHAR(10) NOT NULL,
+    semester VARCHAR(20) NOT NULL, -- e.g., "T1-2025" or "Y1T1"
+    enrolled_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    final_grade VARCHAR(2),
+    status VARCHAR(20) DEFAULT 'Enrolled' CHECK (status IN ('Enrolled', 'Completed', 'Dropped')),
+    
+    -- A student can re-take a course, so the PK must include the semester
+    PRIMARY KEY (student_id, course_id, semester),
+    
+    CONSTRAINT fk_enroll_student
+        FOREIGN KEY(student_id) 
+        REFERENCES students(student_id)
+        ON DELETE CASCADE,
+    
+    CONSTRAINT fk_enroll_course
+        FOREIGN KEY(course_id) 
+        REFERENCES courses(course_id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_enrollments_status ON enrollments (status);
+
+-- Table for assignments within a course
+CREATE TABLE assignments (
+    assignment_id INT AUTO_INCREMENT PRIMARY KEY,
+    course_id VARCHAR(10) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    due_date DATETIME NOT NULL,
+    max_score FLOAT NOT NULL DEFAULT 100.0,
+    assignment_type VARCHAR(50) CHECK (assignment_type IN ('Quiz', 'Project', 'Milestone', 'Lab', 'Exam')),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT fk_assign_course
+        FOREIGN KEY(course_id) 
+        REFERENCES courses(course_id)
+        ON DELETE CASCADE -- If course is deleted, assignments are deleted
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_assignments_course_id ON assignments (course_id);
+CREATE INDEX idx_assignments_due_date ON assignments (due_date);
+
+-- Table for student submissions for assignments
+CREATE TABLE submissions (
+    submission_id INT AUTO_INCREMENT PRIMARY KEY,
+    assignment_id INT NOT NULL,
+    student_id INT NOT NULL,
+    submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    file_path VARCHAR(255),
+    score FLOAT,
+    feedback TEXT,
+    status VARCHAR(20) DEFAULT 'Submitted' CHECK (status IN ('Submitted', 'Graded', 'Late')),
+    
+    -- A student should only have one submission per assignment
+    UNIQUE(assignment_id, student_id), 
+    
+    CONSTRAINT fk_submit_assign
+        FOREIGN KEY(assignment_id) 
+        REFERENCES assignments(assignment_id)
+        ON DELETE CASCADE,
+    
+    CONSTRAINT fk_submit_student
+        FOREIGN KEY(student_id) 
+        REFERENCES students(student_id)
+        ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_submissions_status ON submissions (status);
 
 /* =========================================================
-STEP 3: RE-ENABLE SAFETY CHECKS
-We re-enable this *before* inserting new data 
-to ensure our new data is valid.
+PART 2: POPULATE DATABASE WITH PDF-ACCURATE DATA
+(From NEW DATA script)
 =========================================================
 */
-SET FOREIGN_KEY_CHECKS = 1;
 
 /* =========================================================
 STEP 4: POPULATE PARENT TABLES (USERS, INSTRUCTORS, STUDENTS)
@@ -161,7 +324,7 @@ VALUES
 ('CSD2126', 'CSD2126', 'Modern C++ Design Patterns', 'Applying design patterns in C++ for game development.', 6, 1, 'Fall 2025', 60, 0),
 ('CSD2182', 'CSD2182', 'Operating Systems', 'Principles of operating systems for RTIS students.', 6, 2, 'Fall 2025', 60, 0),
 ('CSD2183', 'CSD2183', 'Data Structures', 'Data structures optimized for real-time performance.', 6, 1, 'Fall 2025', 60, 0),
-('CSD2201', 'CSD2201', 'Calculus and Analytic Geometry 2', 'Advanced calculus for simulation.', 6, 3, 'Fall 2025', 60, 0),
+('CSD2201', 'CSD2201', 'Calculus and Analytic Geometry 2', 'Advanced calculus for simulation.', 6, 3, 'Fall 2LAST 2025', 60, 0),
 ('CSD2401', 'CSD2401', 'Software Engineering Project 3', 'Third project in a series on software engineering.', 6, 4, 'Fall 2025', 60, 0),
 ('CSD2151', 'CSD2151', 'Introduction to Real-Time Rendering', 'Techniques for rendering graphics in real-time.', 6, 1, 'Spring 2026', 60, 0),
 ('CSD2161', 'CSD2161', 'Computer Networks', 'Network programming for multiplayer games and simulations.', 6, 2, 'Spring 2026', 60, 0),
@@ -248,7 +411,7 @@ INSERT INTO enrollments (student_id, course_id, semester, final_grade, status)
 VALUES
 (1001, 'INF1006', 'Y1T3', 'A-', 'Completed'),
 (1001, 'INF1007', 'Y1T3', 'A', 'Completed'),
-(1D01, 'INF1008', 'Y1T3', 'A', 'Completed');
+(1001, 'INF1008', 'Y1T3', 'A', 'Completed');
 
 -- --- YEAR 2, TRIMESTER 1 (Currently Enrolled) ---
 INSERT INTO enrollments (student_id, course_id, semester, final_grade, status)
@@ -265,7 +428,12 @@ STEP 8: UPDATE ENROLLMENT COUNTS
 UPDATE courses SET current_enrollment = COALESCE(current_enrollment, 0) + 1 WHERE course_id IN ('INF2001', 'INF2002', 'INF2003', 'INF2004');
 
 /* =========================================================
-STEP 9: (OPTIONAL) RESET SAFE UPDATES
+STEP 9: RESET SAFE UPDATES
 =========================================================
 */
 SET SQL_SAFE_UPDATES = 1;
+
+/* =========================================================
+END OF COMPLETE SCRIPT
+=========================================================
+*/
