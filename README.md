@@ -90,11 +90,3 @@ You are all set\!
     python run.py
     ```
 2.  Open your web browser and go to `http://127.0.0.1:5000`
-
------
-
-## ⚠️ Important Note on `generate_vectors.py`
-
-You only need to run `python generate_vectors.py` **one time** during this setup.
-
-**Do not run it again** unless you have made major changes to the `courses` or `instructors` tables in your SQL database and need to re-sync your search index.
