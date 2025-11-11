@@ -3,51 +3,54 @@
 {% block title %}Dashboard - UCMS{% endblock %}
 
 {% block content %}
-    <div id="status-message-container" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-4">
-        </div>
+<div id="status-message-container" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-4">
+</div>
 
-    <div class="max-w-7xl flex-grow mx-auto" id="dashboard-content">
-        <div class="mb-6">
-            <h2 class="text-3xl font-bold text-gray-900 mb-2">Student Dashboard</h2>
-            <p class="text-xl text-blue-600" id="welcome-message">Welcome back, loading...</p>
-        </div>
+<div class="max-w-7xl flex-grow mx-auto" id="dashboard-content">
+    <div class="mb-6">
+        <h2 class="text-3xl font-bold text-gray-900 mb-2">Student Dashboard</h2>
+        <p class="text-xl text-blue-600" id="welcome-message">Welcome back, loading...</p>
+    </div>
 
-        <div id="student-info-section" class="grid md:grid-cols-2 gap-6 mb-8">
-            <div class="card bg-yellow-50">
-                <h3 class="text-xl font-semibold m-3">Your Enrollments</h3>
-                <div id="enrollment-list" class="space-y-2 text-sm">Loading...</div>
-            </div>
-            <div class="card">
-                <h3 class="text-xl font-semibold m-3 ">Search Courses</h3>
-                <form id="course-search-form" class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
-                    <input type="text" id="search-query" placeholder="e.g., Core classes, Alan Turing, CS101" class="flex-grow p-3 border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500" required>
-                    <button type="submit" class="btn-primary flex-shrink-0 p-3">Search</button>
-                </form>
-            </div>
+    <div id="student-info-section" class="grid md:grid-cols-2 gap-6 mb-8">
+        <div class="card bg-yellow-50">
+            <h3 class="text-xl font-semibold m-3">Your Enrollments</h3>
+            <div id="enrollment-list" class="space-y-2 text-sm">Loading...</div>
         </div>
-
         <div class="card">
-            <h3 class="text-2xl font-semibold mb-4 border-b pb-2">Available Courses</h3>
-            <div id="course-results-list" class="divide-y divide-gray-200">
-                <p class="text-center text-gray-500 p-6">Use the search bar above to find courses, or click "Show All" to browse.</p>
-                <button class="btn-secondary w-full mt-4" onclick="handleShowAllCourses()">Show All Courses</button>
-            </div>
+            <h3 class="text-xl font-semibold m-3 ">Search Courses</h3>
+            <form id="course-search-form" class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+                <input type="text" id="search-query" placeholder="e.g., Core classes, Alan Turing, CS101"
+                    class="flex-grow p-3 border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500"
+                    required>
+                <button type="submit" class="btn-primary flex-shrink-0 p-3">Search</button>
+            </form>
         </div>
     </div>
-    
-    <script>
+
+    <div id="scroll-to-view" class="card">
+        <h3 class="text-2xl font-semibold mb-4 border-b pb-2">Available Courses</h3>
+        <div id="course-results-list" class="divide-y divide-gray-200">
+            <p class="text-center text-gray-500 p-6">Use the search bar above to find courses, or click "Show All" to
+                browse.</p>
+            <button class="btn-secondary w-full mt-4" onclick="handleShowAllCourses()">Show All Courses</button>
+        </div>
+    </div>
+</div>
+
+<script>
     // --- Store enrollments data globally on this page ---
     let allStudentEnrollments = [];
 
     document.addEventListener('DOMContentLoaded', () => {
         if (!currentState.loggedIn) { return; }
 
-        document.getElementById('welcome-message').textContent = 
+        document.getElementById('welcome-message').textContent =
             `Welcome back, ${currentState.userName} (ID: ${currentState.studentId})`;
-        
+
         loadStudentEnrollments();
         document.getElementById('course-search-form').addEventListener('submit', handleCourseSearch);
-        handleShowAllCourses(); 
+        handleShowAllCourses();
     });
 
 
@@ -55,7 +58,7 @@
         const enrollmentList = document.getElementById('enrollment-list');
         try {
             allStudentEnrollments = await apiFetch(`/api/student/${currentState.studentId}/enrollments`);
-            
+
             if (!allStudentEnrollments || allStudentEnrollments.length === 0) {
                 enrollmentList.innerHTML = '<p class="text-gray-500 mx-3">You are not currently enrolled in any courses.</p>';
                 return;
@@ -90,7 +93,7 @@
     async function handleCourseSearch(event) {
         event.preventDefault();
         const query = document.getElementById('search-query').value.toLowerCase();
-        
+
         // --- 1. Check for LOCAL context ("my courses") ---
         const localKeywords = ['my', 'enrolled', 'completed', 'my schedule'];
         const isLocalSearch = localKeywords.some(kw => query.includes(kw));
@@ -102,16 +105,14 @@
                 .replace(/year (\d)/g, 'y$1')
                 .replace(/trimester (\d)/g, 't$1')
                 .replace(/tri (\d)/g, 't$1')
-                .replace(/\s/g, ''); 
-            
+                .replace(/\s/g, '');
+
             const results = allStudentEnrollments.filter(course => {
                 const searchCorpus = `${course.course_name.toLowerCase()} ${course.course_id.toLowerCase()} ${course.semester.toLowerCase()}`;
                 return searchCorpus.includes(localQuery);
             });
-            
-            displayCourseResults(results, true);
-            document.getElementById('course-results-list').scrollIntoView({ behavior: 'smooth' });
 
+            displayCourseResults(results, true);
         } else {
             // --- GLOBAL (NoSQL) SEARCH ---
             let semanticQuery = query;
@@ -126,7 +127,7 @@
             for (const [key, value] of Object.entries(levelMap)) {
                 if (query.includes(key)) {
                     params.set('level', value);
-                    semanticQuery = semanticQuery.replace(key, ''); 
+                    semanticQuery = semanticQuery.replace(key, '');
                     break;
                 }
             }
@@ -144,10 +145,10 @@
                     break;
                 }
             }
-            
+
             // --- 3. Build and send the API request ---
             semanticQuery = semanticQuery.replace(/courses|course|in|by|for|of/g, '').trim();
-            
+
             // --- ⬇️ THIS IS THE FIX ⬇️ ---
             // If the query is empty OR the semantic query is empty, just show all courses.
             if (!query.trim() || !semanticQuery.trim()) {
@@ -161,7 +162,7 @@
             try {
                 const results = await apiFetch(`/api/search?${params.toString()}`);
                 if (results) {
-                    displayCourseResults(results, false); 
+                    displayCourseResults(results, false);
                 }
             } catch (error) {
                 console.error("Search failed:", error);
@@ -169,6 +170,10 @@
                 showStatusMessage(`Search failed: ${error.message}`, 'error');
             }
         }
+        document.getElementById('scroll-to-view').scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+        });
     }
     function displayCourseResults(courses, isLocalSearch = false) {
         const resultsList = document.getElementById('course-results-list');
@@ -187,9 +192,9 @@
                 const description = course.description || 'Your enrolled course.';
                 const prereqs = course.prerequisites || 'N/A';
                 const instructor = course.instructor_name || 'N/A';
-                const slotsLeft = course.slots_left ?? 'N/A'; 
+                const slotsLeft = course.slots_left ?? 'N/A';
                 const maxCap = course.max_capacity || 'N/A';
-                
+
                 // --- Button Logic ---
                 let buttonHtml = '';
                 if (isLocalSearch) {
@@ -199,7 +204,7 @@
                 } else {
                     // This is a global search, show Apply/Full button
                     const isFull = slotsLeft === 0;
-                    buttonHtml = isFull 
+                    buttonHtml = isFull
                         ? `<button class="btn-secondary bg-red-100 text-red-700 cursor-not-allowed" disabled>Full</button>`
                         : `<button class="btn-primary p-3" onclick="handleEnroll('${courseId}', '${courseName}')">Apply</button>`;
                 }
@@ -225,23 +230,22 @@
 
         resultsList.innerHTML = listContent;
         resultsList.innerHTML += `<button class="btn-secondary w-full mt-4 py-2" onclick="handleShowAllCourses()">Show All Courses</button>`;
-        document.getElementById('course-results-list').scrollIntoView({ behavior: 'smooth' })
     }
 
     async function handleEnroll(courseId, courseTitle) {
         try {
             const data = await apiFetch('/api/enroll', {
                 method: 'POST',
-                body: { 
+                body: {
                     student_id: currentState.studentId,
-                    course_id: courseId 
+                    course_id: courseId
                 }
             });
 
             if (data && data.message) {
                 showStatusMessage(data.message, 'success');
-                loadStudentEnrollments(); 
-                handleShowAllCourses(); 
+                loadStudentEnrollments();
+                handleShowAllCourses();
             }
         } catch (error) {
             showStatusMessage(error.message, 'error');
