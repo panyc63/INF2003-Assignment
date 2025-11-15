@@ -15,7 +15,8 @@ from ..services.services import (
     get_instructor_details_by_user_id,
     get_instructor_courses,
     get_students_in_course,
-    get_course_details_by_ids_list
+    get_course_details_by_ids_list,
+    drop_student_enrollment,
 )
 
 #api blueprint
@@ -157,6 +158,22 @@ def enroll_student():
         return jsonify({"message": message}), 200
     except ValueError as e:
         return jsonify({"message": str(e)}), 409
+    
+@api_bp.route('/enroll/drop', methods=['POST'])
+def drop_enrollment():
+    data = request.json or {}
+    student_id = data.get('student_id')
+    course_id = data.get('course_id')
+
+    if not student_id or not course_id:
+        return jsonify({"message": "Missing student_id or course_id"}), 400
+
+    try:
+        message = drop_student_enrollment(student_id, course_id)
+        return jsonify({"message": message}), 200
+    except ValueError as e:
+        return jsonify({"message": str(e)}), 409
+
     
 # Handles: const allUsers = await apiFetch('/api/users');
 @api_bp.route('/users', methods=['GET'])

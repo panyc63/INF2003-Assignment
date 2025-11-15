@@ -154,6 +154,55 @@ def enroll_student_in_course(student_id, course_id, semester="Fall 2025"):
         db.session.rollback()
         print(e)
         raise ValueError("Database error occurred during enrollment.")
+    
+def drop_student_enrollment(student_id, course_id):
+    """
+    Deletes an active enrollment from the database (instead of marking Dropped)
+    and decrements the course's current_enrollment counter.
+    Only deletes if the student is currently 'Enrolled'.
+    """
+
+    # Check if the student is actually enrolled
+    check_sql = text("""
+        SELECT 1 FROM enrollments
+        WHERE student_id = :sid
+          AND course_id  = :cid
+          AND status     = 'Enrolled'
+        LIMIT 1
+    """)
+    enrollment = db.session.execute(check_sql, {"sid": student_id, "cid": course_id}).first()
+
+    if not enrollment:
+        raise ValueError("You are not currently enrolled in this course.")
+
+    try:
+        # DELETE the enrollment row
+        delete_sql = text("""
+            DELETE FROM enrollments
+            WHERE student_id = :sid
+              AND course_id  = :cid
+              AND status     = 'Enrolled'
+        """)
+        db.session.execute(delete_sql, {"sid": student_id, "cid": course_id})
+
+        # Decrement seat count
+        update_course_sql = text("""
+            UPDATE courses
+            SET current_enrollment =
+                CASE 
+                    WHEN current_enrollment IS NULL OR current_enrollment <= 0 THEN 0
+                    ELSE current_enrollment - 1
+                END
+            WHERE course_id = :cid
+        """)
+        db.session.execute(update_course_sql, {"cid": course_id})
+
+        db.session.commit()
+        return f"Successfully dropped {course_id}."
+    
+    except IntegrityError:
+        db.session.rollback()
+        raise ValueError("Database error occurred while dropping the course.")
 
 # Fetches all course prerequisites and maps them for quick lookup.
 def get_prerequisites_map() -> Dict[str, List[str]]:
@@ -412,7 +461,8 @@ def get_student_enrollments(student_id):
         SELECT 
             c.course_id, c.course_name, c.credits, c.academic_term,
             e.semester,
-            e.status,  -- <-- THIS WAS THE MISSING LINE
+            e.status,
+            e.final_grade,
             u.first_name AS instructor_first, 
             u.last_name AS instructor_last
         FROM enrollments e
@@ -437,7 +487,8 @@ def get_student_enrollments(student_id):
             "academic_term": enrollment.academic_term,
             "instructor_name": instructor_name,
             "semester": enrollment.semester,
-            "status": enrollment.status  # <-- ADDED THIS FIELD TO THE JSON
+            "status": enrollment.status,
+            "final_grade": enrollment.final_grade
         })
     
     return results
