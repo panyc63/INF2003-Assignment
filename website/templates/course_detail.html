@@ -3,7 +3,9 @@
 {% block title %}Course Details - Edukate{% endblock %}
 
 {% block content %}
+
 <div id="course-data" data-course-id="{{ course_id }}"></div>
+
 <div class="jumbotron jumbotron-fluid page-header position-relative overlay-bottom" style="margin-bottom: 90px;">
     <div class="container text-center py-5">
         <h1 class="text-white display-1" id="course-header-code">Loading...</h1>
@@ -74,10 +76,7 @@
                         </div>
                         <div class="progress" style="height: 10px;">
                             <div class="progress-bar bg-secondary" role="progressbar" id="course-progress-bar"
-                                 style="width: 0%;" 
-                                 aria-valuenow="0" 
-                                 aria-valuemin="0" 
-                                 aria-valuemax="100">
+                                 style="width: 0%;" aria-valuemin="0" aria-valuemax="100">
                             </div>
                         </div>
                         <small class="text-muted" id="course-slots-filled">... of ... slots filled</small>
@@ -89,18 +88,25 @@
 </div>
 
 <script>
-    // 1. Get the course_id safely from Jinja
     let currentCourseData = null;
 
     document.addEventListener('DOMContentLoaded', () => {
+        // Get ID from data attribute (No Jinja errors)
         const dataElement = document.getElementById('course-data');
         const courseId = dataElement ? dataElement.dataset.courseId : null;
+        
         if(courseId) populateCourseData(courseId);
     });
 
     async function populateCourseData(id) {
         try {
-            const course = await apiFetch(`/api/courses/${id}`);
+            // 1. Build URL with student_id if logged in
+            let url = `/api/courses/${id}`;
+            if (currentState.loggedIn && currentState.studentId) {
+                url += `?student_id=${currentState.studentId}`;
+            }
+
+            const course = await apiFetch(url);
             currentCourseData = course;
 
             if (!course || course.error) {
@@ -108,27 +114,27 @@
                 return;
             }
 
-            // --- Update Header & Text ---
+            // --- Update Text ---
             document.title = `${course.course_name} - Edukate`;
             document.getElementById('course-header-code').innerText = course.course_code;
             document.getElementById('breadcrumb-title').innerText = course.course_name;
             document.getElementById('course-title').innerText = course.course_name;
             document.getElementById('course-description').innerText = course.description || "No description available.";
             
-            // --- Prerequisites ---
+            // Prerequisites
             const prereqs = course.prerequisites;
             document.getElementById('course-prereqs').innerText = (prereqs && prereqs !== 'None') 
                 ? `Requires: ${prereqs}`
                 : "No prerequisites required.";
 
-            // --- Sidebar Details ---
+            // Sidebar
             document.getElementById('course-instructor').innerText = course.instructor_name;
             document.getElementById('course-code').innerText = course.course_code;
             document.getElementById('course-credits').innerText = course.credits;
             document.getElementById('course-term').innerText = course.academic_term;
             document.getElementById('course-capacity').innerText = `${course.max_capacity} Students`;
 
-            // --- Enrollment Stats ---
+            // Stats
             const current = course.current_enrollment;
             const max = course.max_capacity;
             const left = course.slots_left;
@@ -136,23 +142,34 @@
             document.getElementById('course-slots-left').innerText = left;
             document.getElementById('course-slots-filled').innerText = `${current} of ${max} slots filled`;
 
-            // Progress Bar Logic
             const percent = max > 0 ? Math.min((current / max) * 100, 100) : 0;
             const progressBar = document.getElementById('course-progress-bar');
             progressBar.style.width = `${percent}%`;
             
-            // Update Button State
+            // --- BUTTON LOGIC (Crucial Part) ---
             const btn = document.getElementById('btn-enroll');
-            if (left <= 0) {
+            
+            // Check if user is already enrolled
+            if (course.student_status === 'Enrolled') {
+                btn.innerText = "Already Enrolled";
+                btn.disabled = true;
+                btn.className = "btn btn-success btn-block btn-lg py-3"; // Green button
+                btn.innerHTML = '<i class="fa fa-check mr-2"></i> Enrolled';
+            } 
+            else if (course.student_status === 'Completed') {
+                btn.innerText = "Course Completed";
+                btn.disabled = true;
+                btn.className = "btn btn-info btn-block btn-lg py-3"; // Blue button
+            }
+            else if (left <= 0) {
                 btn.innerText = "Course Full";
                 btn.disabled = true;
-                btn.classList.add('btn-danger');
-                btn.classList.remove('btn-secondary');
-            } else {
+                btn.className = "btn btn-danger btn-block btn-lg py-3";
+            } 
+            else {
                 btn.innerText = "Enroll Now";
                 btn.disabled = false;
-                btn.classList.remove('btn-danger');
-                btn.classList.add('btn-secondary');
+                btn.className = "btn btn-secondary btn-block btn-lg py-3";
             }
 
         } catch (error) {
@@ -162,12 +179,12 @@
     }
 
     async function handleEnroll() {
-        // 1. Auth Check
+        // Auth Check
         if (!currentState.loggedIn) {
             window.location.href = '/login';
             return;
         }
-        // 2. Role Check
+        // Role Check
         if (currentState.userRole !== 'student') {
             alert("Only students can enroll.");
             return;
@@ -175,20 +192,19 @@
 
         if(!confirm(`Confirm enrollment in ${currentCourseData.course_code}?`)) return;
 
-        // 3. API Call
         try {
             const payload = {
                 student_id: currentState.studentId,
-                course_id: courseId
+                course_id: currentCourseData.course_id
             };
-            // apiFetch handles stringify automatically now
+            
             const response = await apiFetch('/api/enroll', {
                 method: 'POST',
                 body: payload
             });
 
             alert(response.message || "Success!");
-            populateCourseData(courseId); // Refresh stats
+            populateCourseData(currentCourseData.course_id); // Refresh UI
         } catch (error) {
             alert(error.message);
         }
