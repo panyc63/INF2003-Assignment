@@ -29,9 +29,9 @@ def create_app(config_class=DevelopmentConfig):
     app.register_blueprint(views_bp, url_prefix='/')
     app.register_blueprint(api_bp, url_prefix='/api')
 
-    # 5. Create SQL tables if they don't exist
-    with app.app_context():
-        db.create_all()
+    # # 5. Create SQL tables if they don't exist
+    # with app.app_context():
+    #     db.create_all()
 
     print("Flask app created and databases initialized.")
     return app

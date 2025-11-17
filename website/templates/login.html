@@ -41,7 +41,6 @@
             if (!allUsers) return;
 
             const user = allUsers.find(u => u.email.toLowerCase() === email);
-
             if (user && password === 'password') { 
                 let redirectUrl = '/dashboard';
                 let roleSpecificId = null;
@@ -64,11 +63,10 @@
                          redirectUrl = '/instructor_dashboard'; 
                     }
                 } else if (user.role === 'admin') {
-                    //admin not done yet does nothing
                     // Save the role-specific ID using the UN-PREFIXED KEY
                     localStorage.setItem('admin_id', user.user_id); 
                     redirectUrl = '/admin_dashboard'; 
-                    alert('Admin functions are not implemented yet.');
+                    // alert('Admin functions are not implemented yet.');
                 }
     
                 // --- 1. Store Universal State Keys (UN-PREFIXED) ---

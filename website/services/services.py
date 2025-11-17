@@ -344,7 +344,8 @@ def get_course_data():
             "max_capacity": c.max_capacity,
             "current_enrollment": c.current_enrollment,
             "slots_left": c.max_capacity - (c.current_enrollment or 0),
-            "instructor_name": instructor_name
+            "instructor_name": instructor_name,
+            "created_at": c.created_at.isoformat() if c.created_at else None
         })
         print(results)
     return results
@@ -541,3 +542,276 @@ def get_students_in_course(course_id):
         }
         for s in students
     ]
+    
+# ADMIN FUNCTIONS HERE
+# =====================================================
+# ADMIN SERVICES: Course Management (CRUD)
+# =====================================================
+
+def create_course(data):
+    """Creates a new course."""
+    try:
+        # Basic validation
+        if not data.get('course_id') or not data.get('course_name'):
+            raise ValueError("Course ID and Name are required.")
+
+        sql = text("""
+            INSERT INTO courses (course_id, course_code, course_name, description, credits, academic_term, max_capacity, instructor_id)
+            VALUES (:id, :code, :name, :desc, :credits, :term, :cap, :inst_id)
+        """)
+        
+        db.session.execute(sql, {
+            "id": data['course_id'],
+            "code": data.get('course_code', data['course_id']), # Default code to ID if missing
+            "name": data['course_name'],
+            "desc": data.get('description', ''),
+            "credits": data.get('credits', 6),
+            "term": data.get('academic_term', 'Fall 2025'),
+            "cap": data.get('max_capacity', 30),
+            "inst_id": data.get('instructor_id') # Can be None
+        })
+        db.session.commit()
+        return f"Course {data['course_id']} created successfully."
+    except IntegrityError:
+        db.session.rollback()
+        raise ValueError(f"Course ID {data['course_id']} already exists.")
+    except Exception as e:
+        db.session.rollback()
+        raise e
+
+def update_course(course_id, data):
+    """Updates an existing course."""
+    sql = text("""
+        UPDATE courses 
+        SET course_name = :name, 
+            description = :desc, 
+            credits = :credits, 
+            academic_term = :term, 
+            max_capacity = :cap,
+            instructor_id = :inst_id
+        WHERE course_id = :id
+    """)
+    
+    result = db.session.execute(sql, {
+        "id": course_id,
+        "name": data['course_name'],
+        "desc": data.get('description'),
+        "credits": data.get('credits'),
+        "term": data.get('academic_term'),
+        "cap": data.get('max_capacity'),
+        "inst_id": data.get('instructor_id')
+    })
+    db.session.commit()
+    
+    if result.rowcount == 0:
+        raise ValueError("Course not found.")
+    return f"Course {course_id} updated."
+
+def delete_course(course_id):
+    """Deletes a course."""
+    # Note: Cascading delete in SQL will handle enrollments/assignments
+    sql = text("DELETE FROM courses WHERE course_id = :id")
+    result = db.session.execute(sql, {"id": course_id})
+    db.session.commit()
+    
+    if result.rowcount == 0:
+        raise ValueError("Course not found.")
+    return f"Course {course_id} deleted."
+
+# =====================================================
+# ADMIN SERVICES: User Management
+# =====================================================
+
+def get_all_users_detailed():
+    """Fetches users with role-specific details for the Admin table."""
+    sql = text("""
+        SELECT 
+            u.user_id, u.university_id, u.first_name, u.last_name, u.email, u.role, u.is_active,
+            s.major,
+            i.department_code
+        FROM users u
+        LEFT JOIN students s ON u.user_id = s.student_id
+        LEFT JOIN instructors i ON u.user_id = i.instructor_id
+        ORDER BY u.date_joined DESC
+    """)
+    users = db.session.execute(sql).all()
+    
+    return [
+        {
+            "user_id": u.user_id,
+            "university_id": u.university_id,
+            "name": f"{u.first_name} {u.last_name}",
+            "email": u.email,
+            "role": u.role,
+            "is_active": bool(u.is_active),
+            "details": u.major if u.role == 'student' else (u.department_code if u.role == 'instructor' else 'Admin')
+        }
+        for u in users
+    ]
+
+def toggle_user_status(user_id):
+    """Toggles a user between active and inactive."""
+    sql = text("UPDATE users SET is_active = NOT is_active WHERE user_id = :uid")
+    db.session.execute(sql, {"uid": user_id})
+    db.session.commit()
+    return "User status updated."
+
+# =====================================================
+# ADMIN SERVICES: User CRUD
+# =====================================================
+
+def create_user(data):
+    """Creates a user and their role-specific profile (Student/Instructor)."""
+    try:
+        # 1. Validate Basic Info
+        if not data.get('university_id') or not data.get('email'):
+            raise ValueError("University ID and Email are required.")
+            
+        role = data.get('role', 'student')
+        
+        # 2. Insert into Base Users Table
+        # Note: In a real app, hash the password here!
+        sql_user = text("""
+            INSERT INTO users (university_id, email, password_hash, first_name, last_name, role, is_active)
+            VALUES (:uid, :email, :pwd, :fname, :lname, :role, 1)
+        """)
+        
+        db.session.execute(sql_user, {
+            "uid": data['university_id'],
+            "email": data['email'],
+            "pwd": "default_password", # Set a default or allow input
+            "fname": data['first_name'],
+            "lname": data['last_name'],
+            "role": role
+        })
+        
+        # 3. Get the new auto-incremented user_id
+        # (Last inserted ID retrieval depends on DB, but we can query by unique university_id)
+        user_id_sql = text("SELECT user_id FROM users WHERE university_id = :uid")
+        user_record = db.session.execute(user_id_sql, {"uid": data['university_id']}).first()
+        new_user_id = user_record.user_id
+
+        # 4. Insert Role-Specific Data
+        if role == 'student':
+            sql_student = text("""
+                INSERT INTO students (student_id, enrollment_year, major, current_standing, gpa)
+                VALUES (:id, :year, :major, :standing, 0.0)
+            """)
+            db.session.execute(sql_student, {
+                "id": new_user_id,
+                "year": data.get('enrollment_year', 2025),
+                "major": data.get('major', 'Undeclared'),
+                "standing": 'Year 1'
+            })
+            
+        elif role == 'instructor':
+            sql_instructor = text("""
+                INSERT INTO instructors (instructor_id, department_code, title, office_location)
+                VALUES (:id, :dept, :title, :office)
+            """)
+            db.session.execute(sql_instructor, {
+                "id": new_user_id,
+                "dept": data.get('department_code', 'GEN'),
+                "title": data.get('title', 'Lecturer'),
+                "office": data.get('office_location', 'TBA')
+            })
+
+        db.session.commit()
+        return f"User {data['university_id']} created successfully."
+
+    except IntegrityError:
+        db.session.rollback()
+        raise ValueError(f"User with ID {data['university_id']} or Email already exists.")
+    except Exception as e:
+        db.session.rollback()
+        raise e
+
+def update_user(user_id, data):
+    """Updates user details and role-specific data."""
+    try:
+        # 1. Update Base User
+        sql_user = text("""
+            UPDATE users 
+            SET first_name = :fname, last_name = :lname, email = :email
+            WHERE user_id = :id
+        """)
+        db.session.execute(sql_user, {
+            "fname": data['first_name'],
+            "lname": data['last_name'],
+            "email": data['email'],
+            "id": user_id
+        })
+
+        role = data.get('role')
+
+        # 2. Update Child Tables based on Role
+        if role == 'student':
+            sql_student = text("""
+                UPDATE students 
+                SET major = :major, enrollment_year = :year
+                WHERE student_id = :id
+            """)
+            db.session.execute(sql_student, {
+                "major": data.get('major'),
+                "year": data.get('enrollment_year'),
+                "id": user_id
+            })
+        elif role == 'instructor':
+            sql_instructor = text("""
+                UPDATE instructors
+                SET department_code = :dept, title = :title
+                WHERE instructor_id = :id
+            """)
+            db.session.execute(sql_instructor, {
+                "dept": data.get('department_code'),
+                "title": data.get('title'),
+                "id": user_id
+            })
+
+        db.session.commit()
+        return f"User {user_id} updated."
+    except Exception as e:
+        db.session.rollback()
+        raise e
+
+def delete_user(user_id):
+    """Deletes a user (Cascade deletes student/instructor profile)."""
+    # The SQL Schema uses ON DELETE CASCADE, so deleting the parent 'users' row is enough.
+    sql = text("DELETE FROM users WHERE user_id = :id")
+    result = db.session.execute(sql, {"id": user_id})
+    db.session.commit()
+    
+    if result.rowcount == 0:
+        raise ValueError("User not found.")
+    return f"User {user_id} deleted."
+
+# Helper to get single user details for Edit Modal
+def get_user_full_details(user_id):
+    sql = text("""
+        SELECT 
+            u.*,
+            s.major, s.enrollment_year,
+            i.department_code, i.title
+        FROM users u
+        LEFT JOIN students s ON u.user_id = s.student_id
+        LEFT JOIN instructors i ON u.user_id = i.instructor_id
+        WHERE u.user_id = :id
+    """)
+    row = db.session.execute(sql, {"id": user_id}).first()
+    if not row: 
+        return None
+    
+    # Convert SQLAlchemy Row to Dict
+    return {
+        "user_id": row.user_id,
+        "university_id": row.university_id,
+        "first_name": row.first_name,
+        "last_name": row.last_name,
+        "email": row.email,
+        "role": row.role,
+        # Role specific
+        "major": row.major,
+        "enrollment_year": row.enrollment_year,
+        "department_code": row.department_code,
+        "title": row.title
+    }

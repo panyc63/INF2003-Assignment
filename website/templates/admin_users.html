@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Users - UCMS{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+        <div>
+            <h2 class="text-3xl font-bold text-gray-900">User Directory</h2>
+            <p class="text-sm text-gray-500 mt-1">Manage student, instructor, and admin accounts.</p>
+        </div>
+        
+        <div class="flex flex-col sm:flex-row items-center gap-3">
+            <div class="relative w-full sm:w-auto">
+                <input type="text" id="searchInput" onkeyup="handleFilterAndSort()" placeholder="Search users..." 
+                    class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm text-sm w-full sm:w-64">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-gray-400"></i>
+                </div>
+            </div>
+
+            <div class="relative w-full sm:w-auto">
+                <select id="sortSelect" onchange="handleFilterAndSort()" 
+                    class="pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm text-sm w-full cursor-pointer bg-white">
+                    <option value="name_asc">Name (A-Z)</option>
+                    <option value="role">Role</option>
+                    <option value="id_newest">ID (Newest)</option>
+                </select>
+            </div>
+
+            <button onclick="openModal()" 
+                class="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2 px-6 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-150 flex items-center justify-center">
+                <i class="fas fa-plus mr-2"></i> Add User
+            </button>
+        </div>
+    </div>
+
+    <div class="flex items-center justify-between bg-white p-4 rounded-t-lg border border-b-0 border-gray-200">
+        <p class="text-sm text-gray-700">
+            Page <span class="font-bold text-gray-900" id="curr-page-num">1</span> of <span class="font-bold text-gray-900" id="total-pages">1</span>
+        </p>
+        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+            <button id="btn-prev" onclick="changePage(-1)" class="relative inline-flex items-center px-3 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed">
+                Prev
+            </button>
+            <button id="btn-next" onclick="changePage(1)" class="relative inline-flex items-center px-3 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed">
+                Next
+            </button>
+        </nav>
+    </div>
+
+    <div class="bg-white shadow-sm rounded-b-lg overflow-hidden border border-gray-200">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">User ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Role</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Details</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
+                </tr>
+            </thead>
+            <tbody id="user-table-body" class="bg-white divide-y divide-gray-200">
+                <tr><td colspan="6" class="text-center py-8 text-gray-500">Loading users...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="userModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm hidden z-50 flex justify-center items-center transition-opacity">
+    <div class="bg-white rounded-xl w-full max-w-2xl p-8 shadow-2xl transform transition-all max-h-screen overflow-y-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h3 id="modalTitle" class="text-2xl font-bold text-gray-800">Add User</h3>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <form id="userForm">
+            <input type="hidden" id="inp_db_id">
+
+            <div class="grid grid-cols-2 gap-5 mb-5">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">University ID</label>
+                    <input type="text" id="inp_uni_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500" placeholder="e.g. S1234567" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Role</label>
+                    <select id="inp_role" onchange="toggleRoleFields()" class="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-blue-500">
+                        <option value="student">Student</option>
+                        <option value="instructor">Instructor</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-5 mb-5">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">First Name</label>
+                    <input type="text" id="inp_fname" class="w-full border border-gray-300 rounded-lg px-3 py-2" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Last Name</label>
+                    <input type="text" id="inp_lname" class="w-full border border-gray-300 rounded-lg px-3 py-2" required>
+                </div>
+            </div>
+
+            <div class="mb-5">
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Email</label>
+                <input type="email" id="inp_email" class="w-full border border-gray-300 rounded-lg px-3 py-2" required>
+            </div>
+
+            <div id="student-fields" class="p-4 bg-blue-50 rounded-lg border border-blue-100 mb-5">
+                <h4 class="text-sm font-bold text-blue-800 mb-3">Student Profile</h4>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-blue-700 mb-1">Major</label>
+                        <input type="text" id="inp_major" class="w-full border border-blue-200 rounded-md px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-blue-700 mb-1">Enrollment Year</label>
+                        <input type="number" id="inp_year" class="w-full border border-blue-200 rounded-md px-3 py-2 text-sm" value="2025">
+                    </div>
+                </div>
+            </div>
+
+            <div id="instructor-fields" class="p-4 bg-green-50 rounded-lg border border-green-100 mb-5 hidden">
+                <h4 class="text-sm font-bold text-green-800 mb-3">Instructor Profile</h4>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-green-700 mb-1">Department</label>
+                        <input type="text" id="inp_dept" class="w-full border border-green-200 rounded-md px-3 py-2 text-sm" placeholder="e.g. CS">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-green-700 mb-1">Title</label>
+                        <input type="text" id="inp_title" class="w-full border border-green-200 rounded-md px-3 py-2 text-sm" placeholder="e.g. Professor">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-3 border-t pt-6">
+                <button type="button" onclick="closeModal()" class="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium">Cancel</button>
+                <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md font-medium">Save User</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    let allUsers = [];
+    let displayedUsers = [];
+    let currentPage = 1;
+    const itemsPerPage = 10;
+    let isEditMode = false;
+
+    document.addEventListener('DOMContentLoaded', loadUsers);
+
+    // --- 1. Toggle Form Fields ---
+    function toggleRoleFields() {
+        const role = document.getElementById('inp_role').value;
+        const sFields = document.getElementById('student-fields');
+        const iFields = document.getElementById('instructor-fields');
+
+        if (role === 'student') {
+            sFields.classList.remove('hidden');
+            iFields.classList.add('hidden');
+        } else if (role === 'instructor') {
+            sFields.classList.add('hidden');
+            iFields.classList.remove('hidden');
+        } else {
+            sFields.classList.add('hidden');
+            iFields.classList.add('hidden');
+        }
+    }
+
+    // --- 2. Load Data ---
+    async function loadUsers() {
+        try {
+            const data = await apiFetch('/api/admin/users');
+            allUsers = data;
+            handleFilterAndSort();
+        } catch (e) {
+            document.getElementById('user-table-body').innerHTML = 
+                `<tr><td colspan="6" class="text-center py-8 text-red-500">Error loading users.</td></tr>`;
+        }
+    }
+
+    // --- 3. Sort & Filter ---
+    function handleFilterAndSort() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const sortVal = document.getElementById('sortSelect').value;
+
+        // Filter
+        let temp = allUsers.filter(u => 
+            u.name.toLowerCase().includes(query) || 
+            u.email.toLowerCase().includes(query) ||
+            u.university_id.toLowerCase().includes(query) ||
+            u.role.toLowerCase().includes(query)
+        );
+
+        // Sort
+        temp.sort((a, b) => {
+            if (sortVal === 'name_asc') return a.name.localeCompare(b.name);
+            if (sortVal === 'role') return a.role.localeCompare(b.role);
+            if (sortVal === 'id_newest') return b.user_id - a.user_id; // Assuming auto-inc ID
+            return 0;
+        });
+
+        displayedUsers = temp;
+        currentPage = 1;
+        renderTable();
+    }
+
+    // --- 4. Render Table ---
+    function renderTable() {
+        const tbody = document.getElementById('user-table-body');
+        const start = (currentPage - 1) * itemsPerPage;
+        const pageData = displayedUsers.slice(start, start + itemsPerPage);
+
+        if (pageData.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-500">No users found.</td></tr>`;
+        } else {
+            tbody.innerHTML = pageData.map(u => {
+                const statusClass = u.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+                const statusText = u.is_active ? 'Active' : 'Inactive';
+                const toggleColor = u.is_active ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50';
+                const toggleText = u.is_active ? 'Deactivate' : 'Activate';
+
+                return `
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${u.university_id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div class="font-bold">${u.name}</div>
+                        <div class="text-xs text-gray-500">${u.email}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
+                        <span class="px-2 py-1 bg-gray-100 rounded text-xs font-bold">${u.role}</span>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">${u.details || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button onclick="editUser(${u.user_id})" class="text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded mr-2">Edit</button>
+                        <button onclick="toggleStatus(${u.user_id})" class="${toggleColor} px-2 py-1 rounded mr-2">${toggleText}</button>
+                        <button onclick="deleteUser(${u.user_id})" class="text-gray-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        }
+        updatePagination();
+    }
+
+    function updatePagination() {
+        const totalPages = Math.max(1, Math.ceil(displayedUsers.length / itemsPerPage));
+        document.getElementById('curr-page-num').innerText = currentPage;
+        document.getElementById('total-pages').innerText = totalPages;
+        document.getElementById('btn-prev').disabled = (currentPage === 1);
+        document.getElementById('btn-next').disabled = (currentPage === totalPages);
+    }
+
+    function changePage(dir) {
+        const totalPages = Math.ceil(displayedUsers.length / itemsPerPage);
+        if (currentPage + dir >= 1 && currentPage + dir <= totalPages) {
+            currentPage += dir;
+            renderTable();
+        }
+    }
+
+    // --- 5. Modal & Form Logic ---
+    const modal = document.getElementById('userModal');
+    const form = document.getElementById('userForm');
+
+    function openModal() {
+        isEditMode = false;
+        document.getElementById('modalTitle').innerText = "Add User";
+        form.reset();
+        document.getElementById('inp_uni_id').disabled = false; // Can edit ID on create
+        toggleRoleFields(); // Reset visibility
+        modal.classList.remove('hidden');
+    }
+
+    function closeModal() { modal.classList.add('hidden'); }
+
+    async function editUser(id) {
+        try {
+            const user = await apiFetch(`/api/admin/users/${id}`);
+            isEditMode = true;
+            document.getElementById('modalTitle').innerText = "Edit User";
+            
+            // Fill base fields
+            document.getElementById('inp_db_id').value = user.user_id;
+            document.getElementById('inp_uni_id').value = user.university_id;
+            document.getElementById('inp_uni_id').disabled = true; // Cannot change ID on edit
+            document.getElementById('inp_fname').value = user.first_name;
+            document.getElementById('inp_lname').value = user.last_name;
+            document.getElementById('inp_email').value = user.email;
+            document.getElementById('inp_role').value = user.role;
+
+            // Fill role specific
+            if(user.role === 'student') {
+                document.getElementById('inp_major').value = user.major;
+                document.getElementById('inp_year').value = user.enrollment_year;
+            } else if (user.role === 'instructor') {
+                document.getElementById('inp_dept').value = user.department_code;
+                document.getElementById('inp_title').value = user.title;
+            }
+
+            toggleRoleFields();
+            modal.classList.remove('hidden');
+        } catch (e) {
+            alert("Could not fetch user details.");
+        }
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const role = document.getElementById('inp_role').value;
+        const payload = {
+            university_id: document.getElementById('inp_uni_id').value,
+            first_name: document.getElementById('inp_fname').value,
+            last_name: document.getElementById('inp_lname').value,
+            email: document.getElementById('inp_email').value,
+            role: role,
+            // Role specific
+            major: document.getElementById('inp_major').value,
+            enrollment_year: document.getElementById('inp_year').value,
+            department_code: document.getElementById('inp_dept').value,
+            title: document.getElementById('inp_title').value
+        };
+
+        const dbId = document.getElementById('inp_db_id').value;
+        const url = isEditMode ? `/api/admin/users/${dbId}` : '/api/admin/users';
+        const method = isEditMode ? 'PUT' : 'POST';
+
+        try {
+            await apiFetch(url, { method, body: payload }); 
+            console.log(payload);
+            closeModal();
+            loadUsers();
+        } catch (err) {
+            alert(err.message);
+        }
+    });
+
+    async function toggleStatus(id) {
+        try {
+            await apiFetch(`/api/admin/users/${id}/toggle`, { method: 'POST' });
+            loadUsers();
+        } catch (e) { alert(e.message); }
+    }
+
+    async function deleteUser(id) {
+        if(!confirm("Delete this user? This will remove all their records (Enrollments, etc).")) return;
+        try {
+            await apiFetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+            loadUsers();
+        } catch (e) { alert(e.message); }
+    }
+</script>
+{% endblock %}

@@ -1,12 +1,9 @@
 from flask import Blueprint, request, jsonify
-# --- New Imports for NoSQL Search ---
 from website import mongo
 from sentence_transformers import SentenceTransformer
-# -------------------------------------
 from ..services.services import (
     get_course_data,
-    # semantic_search,  <-- We removed this old SQL search
-    get_course_details_by_id, # <-- Added this for the single course route
+    get_course_details_by_id,
     get_student_data,
     get_student_enrollments,
     enroll_student_in_course,
@@ -17,46 +14,51 @@ from ..services.services import (
     get_students_in_course,
     get_course_details_by_ids_list,
     drop_student_enrollment,
+    create_course,
+    update_course,
+    delete_course,
+    get_all_users_detailed,
+    toggle_user_status,
+    create_user,
+    update_user,
+    delete_user,
+    get_user_full_details
 )
 
-#api blueprint
+# Define Blueprint
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
-# --- Load the NLP model once ---
+# Load the NLP model once
 model = SentenceTransformer('all-MiniLM-L6-v2')
-# -------------------------------
 
+# =========================================================
+# PUBLIC & STUDENT ROUTES
+# =========================================================
 
-# Retrieve all course data including instructor name and slots remaining.
 @api_bp.route('/courses', methods=['GET'])
 def get_courses():
+    """Retrieve all course data."""
     all_courses = get_course_data()
     return jsonify(all_courses)
 
-# Retrieve all course data including instructor name and slots remaining.
 @api_bp.route('/courses/<string:course_id>', methods=['GET'])
 def get_course(course_id):
-    # --- FIX: Use the correct function for a single course ---
+    """Retrieve single course details."""
     course = get_course_details_by_id(course_id)
     if course:
         return jsonify(course)
     return jsonify({"error": "Course not found"}), 404
 
-# Retrieve all student data for mock login.
 @api_bp.route('/students', methods=['GET'])
 def get_students():
+    """Retrieve all student data (for login)."""
     all_students = get_student_data()
     return jsonify(all_students)
 
-# In website/routes/api.py
-
-# In website/routes/api.py
-
-# In website/routes/api.py
-
 @api_bp.route('/search', methods=['GET'])
 def search_courses():
-    # --- Get all parameters from URL ---
+    """Semantic Search for courses."""
+    # Get parameters safely from query string (args is a dict-like object)
     query = request.args.get('q', '')
     term = request.args.get('term', None)
     level = request.args.get('level', None)
@@ -67,41 +69,21 @@ def search_courses():
         
     query_vector = model.encode(query).tolist()
     
-    # --- Build the Pre-Filter ---
-    # This filter syntax is NEW and matches the "filter" index type
+    # Build Filter
     filter_conditions = []
-    
     if term:
-        # 'filter' type uses the 'equals' operator for strings
-        filter_conditions.append({
-            "equals": {
-                "value": term,
-                "path": "academic_term"
-            }
-        })
+        filter_conditions.append({"equals": {"value": term, "path": "academic_term"}})
     
     if level:
         try:
-            # 'filter' type also uses 'equals' for numbers
-            filter_conditions.append({
-                "equals": {
-                    "value": int(level),
-                    "path": "course_level"
-                }
-            })
+            filter_conditions.append({"equals": {"value": int(level), "path": "course_level"}})
         except ValueError:
-            pass # Ignore invalid level
+            pass 
 
     if instructor:
-        # 'filter' type uses 'equals' for strings
-        filter_conditions.append({
-            "equals": {
-                "value": instructor,
-                "path": "instructor_name"
-            }
-        })
+        filter_conditions.append({"equals": {"value": instructor, "path": "instructor_name"}})
 
-    # --- Create the Vector Search Pipeline ---
+    # Vector Search Pipeline
     pipeline = [
         {
             "$vectorSearch": {
@@ -110,12 +92,11 @@ def search_courses():
                 "queryVector": query_vector,
                 "numCandidates": 100,
                 "limit": 10,
-                # --- This 'filter' clause is different ---
                 "filter": {
                     "compound": {
                         "must": filter_conditions
                     }
-                } if filter_conditions else {} # Only add filter if it exists
+                } if filter_conditions else {} 
             }
         },
         {
@@ -127,28 +108,37 @@ def search_courses():
         }
     ]
     
-    # --- The rest of your function (Hydration) is still correct ---
     mongo_results = list(mongo.db.courses.aggregate(pipeline))
     if not mongo_results:
         return jsonify([])
 
+    # Hydrate results from SQL
     course_ids = [res['course_id'] for res in mongo_results]
-    
     hydrated_results = get_course_details_by_ids_list(course_ids)
     
+    # Merge scores
     score_map = {res['course_id']: res['score'] for res in mongo_results}
     for res in hydrated_results:
         res['score'] = score_map.get(res['course_id'], 0)
 
     return jsonify(hydrated_results)
 
+# =========================================================
+# ENROLLMENT ROUTES
+# =========================================================
 
-# Handle student enrollment in a course.
 @api_bp.route('/enroll', methods=['POST'])
 def enroll_student():
-    data = request.json
-    student_id = data.get('student_id')
-    course_id = data.get('course_id')
+    # Use get_json() to ensure parsing, silent=True returns None on failure
+    data = request.get_json(silent=True)
+    
+    # Validate data is a dictionary
+    if data is None or not isinstance(data, dict):
+        return jsonify({"message": "Invalid JSON format"}), 400
+
+    # Manual key check instead of .get()
+    student_id = data['student_id'] if 'student_id' in data else None
+    course_id = data['course_id'] if 'course_id' in data else None
 
     if not student_id or not course_id:
         return jsonify({"message": "Missing student_id or course_id"}), 400
@@ -158,12 +148,19 @@ def enroll_student():
         return jsonify({"message": message}), 200
     except ValueError as e:
         return jsonify({"message": str(e)}), 409
-    
+    except Exception as e:
+        return jsonify({"message": "Enrollment failed"}), 500
+
 @api_bp.route('/enroll/drop', methods=['POST'])
 def drop_enrollment():
-    data = request.json or {}
-    student_id = data.get('student_id')
-    course_id = data.get('course_id')
+    data = request.get_json(silent=True)
+
+    if data is None or not isinstance(data, dict):
+        return jsonify({"message": "Invalid JSON format"}), 400
+
+    # Manual key check
+    student_id = data['student_id'] if 'student_id' in data else None
+    course_id = data['course_id'] if 'course_id' in data else None
 
     if not student_id or not course_id:
         return jsonify({"message": "Missing student_id or course_id"}), 400
@@ -174,14 +171,15 @@ def drop_enrollment():
     except ValueError as e:
         return jsonify({"message": str(e)}), 409
 
-    
-# Handles: const allUsers = await apiFetch('/api/users');
+# =========================================================
+# USER INFO ROUTES
+# =========================================================
+
 @api_bp.route('/users', methods=['GET'])
 def api_get_users():
     user_data = get_user_data()
     return jsonify(user_data)
 
-# Fetches detailed student data by User ID.
 @api_bp.route('/students/<int:user_id>', methods=['GET'])
 def api_get_student_details(user_id):
     student_data = get_student_details_by_user_id(user_id)
@@ -189,7 +187,6 @@ def api_get_student_details(user_id):
         return jsonify(student_data)
     return jsonify({"error": "Student not found"}), 404
 
-# Fetches detailed instructor data by User ID.
 @api_bp.route('/instructors/<int:user_id>', methods=['GET'])
 def api_get_instructor_details(user_id):
     instructor_data = get_instructor_details_by_user_id(user_id)
@@ -197,13 +194,11 @@ def api_get_instructor_details(user_id):
         return jsonify(instructor_data)
     return jsonify({"error": "Instructor not found"}), 404
 
-# Retrieves all active enrollments for a specific student.
 @api_bp.route('/student/<int:student_id>/enrollments', methods=['GET'])
 def api_get_student_enrollments(student_id):
     enrollments = get_student_enrollments(student_id)
     return jsonify(enrollments)
 
-# Fetches all courses taught by a specific instructor ID.
 @api_bp.route('/instructor/<int:instructor_id>/courses', methods=['GET'])
 def api_get_instructor_courses(instructor_id):
     courses = get_instructor_courses(instructor_id)
@@ -211,6 +206,104 @@ def api_get_instructor_courses(instructor_id):
 
 @api_bp.route('/course/<string:course_id>/students', methods=['GET'])
 def api_get_course_students(course_id):
-    """Fetches all students enrolled in a specific course ID."""
     students = get_students_in_course(course_id)
     return jsonify(students)
+
+# =========================================================
+# ADMIN ROUTES
+# =========================================================
+
+@api_bp.route('/admin/courses', methods=['POST'])
+def api_create_course():
+    try:
+        # Ensure we have valid JSON dict
+        data = request.get_json(silent=True)
+        if data is None or not isinstance(data, dict):
+            return jsonify({"error": "Invalid JSON payload"}), 400
+            
+        msg = create_course(data)
+        return jsonify({"message": msg}), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@api_bp.route('/admin/courses/<string:course_id>', methods=['PUT'])
+def api_update_course(course_id):
+    try:
+        data = request.get_json(silent=True)
+        if data is None or not isinstance(data, dict):
+            return jsonify({"error": "Invalid JSON payload"}), 400
+            
+        msg = update_course(course_id, data)
+        return jsonify({"message": msg}), 200
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@api_bp.route('/admin/courses/<string:course_id>', methods=['DELETE'])
+def api_delete_course(course_id):
+    try:
+        msg = delete_course(course_id)
+        return jsonify({"message": msg}), 200
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+
+@api_bp.route('/admin/users', methods=['GET'])
+def api_get_all_users_detailed():
+    users = get_all_users_detailed()
+    return jsonify(users)
+
+@api_bp.route('/admin/users/<int:user_id>/toggle', methods=['POST'])
+def api_toggle_user(user_id):
+    try:
+        msg = toggle_user_status(user_id)
+        return jsonify({"message": msg}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+# In website/routes/api.py
+
+
+# --- ADMIN USER CRUD ROUTES ---
+
+@api_bp.route('/admin/users', methods=['POST'])
+def api_create_user():
+    print(request.data)
+    try:
+        data = request.get_json(silent=True)
+        if not data or not isinstance(data, dict):
+            return jsonify({"error": "Invalid JSON"}), 400
+        
+        msg = create_user(data)
+        return jsonify({"message": msg}), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@api_bp.route('/admin/users/<int:user_id>', methods=['GET'])
+def api_get_single_user(user_id):
+    """Used to populate the Edit Modal"""
+    user = get_user_full_details(user_id)
+    if user:
+        return jsonify(user)
+    return jsonify({"error": "User not found"}), 404
+
+@api_bp.route('/admin/users/<int:user_id>', methods=['PUT'])
+def api_update_user(user_id):
+    try:
+        data = request.get_json(silent=True)
+        msg = update_user(user_id, data)
+        return jsonify({"message": msg}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@api_bp.route('/admin/users/<int:user_id>', methods=['DELETE'])
+def api_delete_user(user_id):
+    try:
+        msg = delete_user(user_id)
+        return jsonify({"message": msg}), 200
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
