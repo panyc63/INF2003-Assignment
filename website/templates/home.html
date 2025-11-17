@@ -13,17 +13,14 @@
                     <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Why Choose Us?</h6>
                     <h1 class="display-4">Best Courses for Your Future</h1>
                 </div>
-                <p class="mb-4 pb-2">Aliquyam accusam clita nonumy ipsum sit sea amet ipsum lorem diam
-                    stet et. Eos nonumy eirmod eirmod elitr rebum clita no sed dubium amet sed ipsum et
-                    est stet-.</p>
+                <p class="mb-4 pb-2">Join a community of learners and master new skills with our expert-led courses. Flexible learning for a modern world.</p>
                 <div class="d-flex mb-3">
                     <div class="btn-icon bg-primary mr-4">
                         <i class="fa fa-2x fa-graduation-cap text-white"></i>
                     </div>
                     <div class="mt-n1">
                         <h4>Skilled Instructors</h4>
-                        <p>Labore rebum sit at nonumy rebum nonumy rebum erat lorem ipsum dolor sit vero et. Ipsum
-                            nonumy ipsum</p>
+                        <p>Learn from industry experts with real-world experience.</p>
                     </div>
                 </div>
                 <div class="d-flex mb-3">
@@ -32,8 +29,7 @@
                     </div>
                     <div class="mt-n1">
                         <h4>International Certificate</h4>
-                        <p>Labore rebum sit at nonumy rebum nonumy rebum erat lorem ipsum dolor sit vero et. Ipsum
-                            nonumy ipsum</p>
+                        <p>Earn recognized certificates to boost your career.</p>
                     </div>
                 </div>
                 <div class="d-flex">
@@ -42,159 +38,40 @@
                     </div>
                     <div class="mt-n1">
                         <h4>Online Classes</h4>
-                        <p class="m-0">Labore rebum sit at nonumy rebum nonumy rebum erat lorem ipsum dolor sit vero et.
-                            Ipsum nonumy ipsum</p>
+                        <p class="m-0">Access content anytime, anywhere, on any device.</p>
                     </div>
                 </div>
             </div>
             <div class="col-lg-5" style="min-height: 500px;">
                 <div class="position-relative h-100">
-                    <img class="position-absolute w-100 h-100" src="{{ url_for('static', filename='img/feature.jpg') }}"
-                        style="object-fit: cover;">
+                    <img class="position-absolute w-100 h-100" src="{{ url_for('static', filename='img/feature.jpg') }}" style="object-fit: cover;">
                 </div>
             </div>
         </div>
     </div>
 </div>
+
 <div class="container-fluid py-5">
     <div class="container py-5">
-        <div class="row align-items-center">
-            <div class="col-lg-5 mb-5 mb-lg-0">
-                <img class="img-fluid rounded mb-4 mb-lg-0" src="{{ url_for('static', filename='img/about.jpg') }}"
-                    alt="">
-            </div>
-            <div class="col-lg-7">
-                <div class="section-title position-relative mb-4">
-                    <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">About Us</h6>
-                    <h1 class="display-4">First Choice For Online Education Anywhere</h1>
-                </div>
-                <p>Tempor erat elitr at rebum at at clita aliquyam consetetur. Diam dolor diam ipsum et, tempor et
-                    et
-                    diam rebum et sit.
-                    Consetetur et est nonumy labore diam. Sadipscing et at at labore, labore rebum amet sit et
-                    labore,
-                    stet
-                    magna ipsum consetetur at. Nonumy sed clita eos eirmod
-                    eirmod amet sit ipsum et. Id sed ipsum sit</p>
-                <div class="row pt-3 mx-0">
-                    <div class="col-3 px-0">
-                        <div class="bg-success text-center p-4">
-                            <h1 class="text-white" data-toggle="counter-up">123</h1>
-                            <h6 class="text-uppercase text-white">Available<span class="d-block">Subjects</span></h6>
-                        </div>
-                    </div>
-                    <div class="col-3 px-0">
-                        <div class="bg-primary text-center p-4">
-                            <h1 class="text-white" data-toggle="counter-up">999</h1>
-                            <h6 class="text-uppercase text-white">Online<span class="d-block">Courses</span></h6>
-                        </div>
-                    </div>
-                    <div class="col-3 px-0">
-                        <div class="bg-secondary text-center p-4">
-                            <h1 class="text-white" data-toggle="counter-up">420</h1>
-                            <h6 class="text-uppercase text-white">Skilled<span class="d-block">Instructors</span></h6>
-                        </div>
-                    </div>
-                    <div class="col-3 px-0">
-                        <div class="bg-warning text-center p-4">
-                            <h1 class="text-white" data-toggle="counter-up">1590</h1>
-                            <h6 class="text-uppercase text-white">Happy<span class="d-block">Students</span></h6>
-                        </div>
-                    </div>
+        <div class="row mx-0 justify-content-center">
+            <div class="col-lg-8">
+                <div class="section-title text-center position-relative mb-5">
+                    <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Our Courses</h6>
+                    <h1 class="display-4">Checkout New Releases</h1>
                 </div>
             </div>
         </div>
-    </div>
-    <div class="container-fluid py-5">
-        <div class="container py-5">
-            <div class="row mx-0 justify-content-center">
-                <div class="col-lg-8">
-                    <div class="section-title text-center position-relative mb-5">
-                        <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Our Courses</h6>
-                    </div>
-                </div>
-            </div>
-            <div class="owl-carousel courses-carousel">
-            
-            {% for course in courses %}
-                {# Calculate the image number to cycle through 1 to 6 #}
-                {% set image_number = (loop.index0 % 6) + 1 %} 
-                
-                <div class="courses-list-item position-relative d-block overflow-hidden mb-2" style="margin-right: 10px;">
-                    
-                    {# The href is CORRECTLY linked to the detail page #}
-                    <a href="{{ url_for('views.course_info', course_id=course.course_id) }}">
-                        
-                        {# Dynamic Image Source #}
-                        <img class="img-fluid" 
-                             src="{{ url_for('static', filename='img/courses-' + image_number|string + '.jpg') }}" 
-                             alt="{{ course.course_name }}">
-                        
-                        <div class="courses-text">
-                            {# Dynamic Course Code and Name #}
-                            <h4 class="text-center text-white px-3">{{ course.course_code }} - {{ course.course_name }}</h4>
-                            <div class="border-top w-100 mt-3">
-                                <div class="d-flex justify-content-between p-4">
-                                    {# Dynamic Instructor Name #}
-                                    <span class="text-white"><i class="fa fa-user mr-2"></i>{{ course.instructor_name }}</span>
-                                    {# Dynamic Credits (replaces static star rating) #}
-                                    <span class="text-white"><i class="fa fa-book-open mr-2"></i>{{ course.credits }} Credits</span>
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-            
-            {% endfor %}
-            
-        </div>
-        </div>
-        <div class="owl-carousel courses-carousel">
-            <div class="courses-list-item position-relative d-block overflow-hidden mb-2" style="margin-right: 10px;">
-                <a href="{{ url_for('views.detail') }}">
-                    <img class="img-fluid" src="{{ url_for('static', filename='img/courses-1.jpg') }}" alt="">
-                    <div class="courses-text">
-                        <h4 class="text-center text-white px-3">Web design & development courses for beginners</h4>
-                        <div class="border-top w-100 mt-3">
-                            <div class="d-flex justify-content-between p-4">
-                                <span class="text-white"><i class="fa fa-user mr-2"></i>Jhon Doe</span>
-                                <span class="text-white"><i class="fa fa-star mr-2"></i>4.5 <small>(250)</small></span>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="courses-list-item position-relative d-block overflow-hidden mb-2" style="margin-right: 10px;">
-                <a href="{{ url_for('views.detail') }}">
-                    <img class="img-fluid" src="{{ url_for('static', filename='img/courses-2.jpg') }}" alt="">
-                    <div class="courses-text">
-                        <h4 class="text-center text-white px-3">Web design & development courses for beginners</h4>
-                        <div class="border-top w-100 mt-3">
-                            <div class="d-flex justify-content-between p-4">
-                                <span class="text-white"><i class="fa fa-user mr-2"></i>Jhon Doe</span>
-                                <span class="text-white"><i class="fa fa-star mr-2"></i>4.5 <small>(250)</small></span>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="courses-list-item position-relative d-block overflow-hidden mb-2" style="margin-right: 10px;">
-                <a href="{{ url_for('views.detail') }}">
-                    <img class="img-fluid" src="{{ url_for('static', filename='img/courses-3.jpg') }}" alt="">
-                    <div class="courses-text">
-                        <h4 class="text-center text-white px-3">Web design & development courses for beginners</h4>
-                        <div class="border-top w-100 mt-3">
-                            <div class="d-flex justify-content-between p-4">
-                                <span class="text-white"><i class="fa fa-user mr-2"></i>Jhon Doe</span>
-                                <span class="text-white"><i class="fa fa-star mr-2"></i>4.5 <small>(250)</small></span>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
+        
+        <div id="courses-container" class="owl-carousel courses-carousel">
+            <div class="text-center p-5">
+                 <div class="spinner-border text-primary" role="status">
+                     <span class="sr-only">Loading...</span>
+                 </div>
+             </div>
         </div>
     </div>
 </div>
+
 <div class="container-fluid py-5">
     <div class="container pt-5 pb-3">
         <div class="row mx-0 justify-content-center">
@@ -211,101 +88,114 @@
                     <img class="img-fluid mb-4" src="{{ url_for('static', filename='img/team-1.jpg') }}" alt="">
                     <div class="bg-light p-4">
                         <h4 class="mb-3">Alan Turing</h4>
-                        <p class="m-0">Web Developer</p>
+                        <p class="m-0">Computer Science</p>
                     </div>
                 </div>
             </div>
-            <div class="row">
-                <div class="col-lg-3 col-md-6 pb-4">
-                    <div class="team-item">
-                        <img class="img-fluid mb-4" src="{{ url_for('static', filename='img/team-1.jpg') }}" alt="">
-                        <div class="bg-light p-4">
-                            <h4 class="mb-3">Ada Lovelace</h4>
-                            <p class="m-0">Web Developer</p>
-                        </div>
+            <div class="col-lg-3 col-md-6 pb-4">
+                <div class="team-item">
+                    <img class="img-fluid mb-4" src="{{ url_for('static', filename='img/team-2.jpg') }}" alt="">
+                    <div class="bg-light p-4">
+                        <h4 class="mb-3">Ada Lovelace</h4>
+                        <p class="m-0">Software Engineering</p>
                     </div>
                 </div>
-                <div class="col-lg-3 col-md-6 pb-4">
-                    <div class="team-item">
-                        <img class="img-fluid mb-4" src="{{ url_for('static', filename='img/team-2.jpg') }}" alt="">
-                        <div class="bg-light p-4">
-                            <h4 class="mb-3">Alan Turing</h4>
-                            <p class="m-0">Web Developer</p>
-                        </div>
+            </div>
+            <div class="col-lg-3 col-md-6 pb-4">
+                <div class="team-item">
+                    <img class="img-fluid mb-4" src="{{ url_for('static', filename='img/team-3.jpg') }}" alt="">
+                    <div class="bg-light p-4">
+                        <h4 class="mb-3">Grace Hopper</h4>
+                        <p class="m-0">Mathematics</p>
                     </div>
                 </div>
-                <div class="col-lg-3 col-md-6 pb-4">
-                    <div class="team-item">
-                        <img class="img-fluid mb-4" src="{{ url_for('static', filename='img/team-3.jpg') }}" alt="">
-                        <div class="bg-light p-4">
-                            <h4 class="mb-3">Grace Hopper</h4>
-                            <p class="m-0">Web Developer</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6 pb-4">
-                    <div class="team-item">
-                        <img class="img-fluid mb-4" src="{{ url_for('static', filename='img/team-4.jpg') }}" alt="">
-                        <div class="bg-light p-4">
-                            <h4 class="mb-3">Timmy Turner</h4>
-                            <p class="m-0">Web Developer</p>
-                        </div>
+            </div>
+            <div class="col-lg-3 col-md-6 pb-4">
+                <div class="team-item">
+                    <img class="img-fluid mb-4" src="{{ url_for('static', filename='img/team-4.jpg') }}" alt="">
+                    <div class="bg-light p-4">
+                        <h4 class="mb-3">Siti Nurhaliza</h4>
+                        <p class="m-0">General Studies</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-<div class="container-fluid bg-image py-5" style="margin: 90px 0;">
-    <div class="container py-5">
-        <div class="row align-items-center">
-            <div class="col-md-5 mb-5 mb-md-0">
-                <div class="section-title position-relative mb-4">
-                    <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Testimonial</h6>
-                    <h1 class="display-4">What Students Say About Our Online Courses</h1>
+
+<script>
+    document.addEventListener('DOMContentLoaded', loadHomeCourses);
+
+    async function loadHomeCourses() {
+        const container = document.getElementById('courses-container');
+        
+        try {
+            // Fetch data from API
+            const courses = await apiFetch('/api/courses');
+            
+            if (!courses || courses.length === 0) {
+                container.innerHTML = '<div class="text-center w-100">No courses available at the moment.</div>';
+                return;
+            }
+
+            // Generate HTML for courses
+            // Limit to first 6 for the homepage carousel
+            const featuredCourses = courses.slice(0, 6);
+            
+            let htmlContent = featuredCourses.map((course, index) => {
+                const imgNum = (index % 6) + 1; // Cycle images 1-6
+                const detailUrl = `/course/${course.course_id}`;
+                
+                return `
+                <div class="courses-list-item position-relative d-block overflow-hidden mb-2" style="margin-right: 10px;">
+                    <a href="${detailUrl}">
+                        <img class="img-fluid" src="/static/img/courses-${imgNum}.jpg" alt="${course.course_name}">
+                        <div class="courses-text">
+                            <h4 class="text-center text-white px-3">${course.course_code} - ${course.course_name}</h4>
+                            <div class="border-top w-100 mt-3">
+                                <div class="d-flex justify-content-between p-4">
+                                    <span class="text-white"><i class="fa fa-user mr-2"></i>${course.instructor_name || 'TBA'}</span>
+                                    <span class="text-white"><i class="fa fa-book-open mr-2"></i>${course.credits} Credits</span>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
                 </div>
-                <p class="m-0">Dolor et eos labore, stet justo sed est sed. Diam sed sed dolor stet amet eirmod eos
-                    labore diam
-                    ipsum.
-                    Est nonumy silta eirmod nonumy eirmod aliquyam.</p>
-            </div>
-            <div class="col-md-7">
-                <div class="owl-carousel testimonial-carousel">
-                    <div class="bg-white p-5 text-center">
-                        <img class="img-fluid mx-auto mb-4"
-                            src="{{ url_for('static', filename='img/testimonial-1.jpg') }}" alt="">
-                        <p>Nonumy ipsum amet tempor
-                            amet.
-                            Clita nonumy dolor erat et
-                            elitr nonumy stet
-                            tempor et ut.
-                            Dolor et eos labore, stet justo sed est sed. Diam sed sed dolor stet amet eirmod eos labore
-                            diam
-                            ipsum.
-                            Est nonumy silta
-                            eirmod nonumy eirmod aliquyam.</p>
-                        <h5 class="mb-0">Student Name</h5>
-                        <span class="text-primary">Web Developer</span>
-                    </div>
-                    <div class="bg-white p-5 text-center">
-                        <img class="img-fluid mx-auto mb-4"
-                            src="{{ url_for('static', filename='img/testimonial-2.jpg') }}" alt="">
-                        <p>Nonumy ipsum amet tempor
-                            amet.
-                            Clita nonumy dolor erat et
-                            elitr nonumy stet
-                            tempor et ut.
-                            Dolor et eos labore, stet justo sed est sed. Diam sed sed dolor stet amet eirmod eos labore
-                            diam
-                            ipsum.
-                            Est nonumy silta
-                            eirmod nonumy eirmod aliquyam.</p>
-                        <h5 class="mb-0">Student Name</h5>
-                        <span class="text-primary">Web Developer</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+                `;
+            }).join('');
+
+            // Destroy existing carousel if initialized (rare on first load but good practice)
+            if ($(container).data('owl.carousel')) {
+                $(container).trigger('destroy.owl.carousel');
+            }
+
+            // Inject HTML
+            container.innerHTML = htmlContent;
+
+            // Initialize Owl Carousel
+            $(container).owlCarousel({
+                autoplay: true,
+                smartSpeed: 1500,
+                items: 1,
+                dots: false,
+                loop: true,
+                nav : true,
+                navText : [
+                    '<i class="fa fa-angle-left" aria-hidden="true"></i>',
+                    '<i class="fa fa-angle-right" aria-hidden="true"></i>'
+                ],
+                responsive: {
+                    0:{ items:1 },
+                    576:{ items:1 },
+                    768:{ items:2 },
+                    992:{ items:3 }
+                }
+            });
+
+        } catch (error) {
+            console.error('Failed to load courses:', error);
+            container.innerHTML = '<div class="text-center text-danger w-100">Failed to load courses.</div>';
+        }
+    }
+</script>
 {% endblock %}

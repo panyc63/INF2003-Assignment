@@ -46,7 +46,7 @@ def get_course_details_by_ids_list(course_ids: List[str]) -> List[Dict[str, Any]
             "max_capacity": c.max_capacity,
             "current_enrollment": c.current_enrollment,
             "slots_left": c.max_capacity - (c.current_enrollment or 0),
-            "instructor_name": instructor_name
+            "instructor_name": instructor_name,
         })
 
     # --- Re-order the results to match the semantic search score ---
@@ -351,20 +351,49 @@ def get_course_data():
     return results
 
 def get_course_details_by_id(course_id):
+    """
+    Fetches comprehensive details for a single course, including 
+    instructor name, enrollment counts, and prerequisites.
+    """
     sql = text("""
-        SELECT course_id, course_name, credits, description, academic_term
-        FROM courses 
-        WHERE course_id = :cid
+        SELECT 
+            c.*, 
+            u.first_name AS instructor_first, 
+            u.last_name AS instructor_last,
+            (SELECT GROUP_CONCAT(pr.requires_course_id SEPARATOR ', ') 
+             FROM prerequisites pr 
+             WHERE pr.course_id = c.course_id) AS prereqs_list
+        FROM courses c
+        LEFT JOIN instructors i ON c.instructor_id = i.instructor_id
+        LEFT JOIN users u ON i.instructor_id = u.user_id
+        WHERE c.course_id = :cid
     """)
+    
     course = db.session.execute(sql, {"cid": course_id}).first()
     
     if course:
+        # robust name handling
+        if course.instructor_first:
+            instructor_name = f"{course.instructor_first} {course.instructor_last}"
+        else:
+            instructor_name = "TBA"
+
+        # handle enrollment math
+        curr = course.current_enrollment or 0
+        cap = course.max_capacity
+        
         return {
             "course_id": course.course_id, 
+            "course_code": course.course_code,
             "course_name": course.course_name,
             "credits": course.credits,
             "description": course.description,
             "academic_term": course.academic_term,
+            "max_capacity": cap,
+            "current_enrollment": curr,
+            "slots_left": cap - curr,
+            "instructor_name": instructor_name,
+            "prerequisites": course.prereqs_list if course.prereqs_list else "None"
         }
     return None
 

@@ -3,19 +3,20 @@
 {% block title %}Course Details - Edukate{% endblock %}
 
 {% block content %}
-
+<div id="course-data" data-course-id="{{ course_id }}"></div>
 <div class="jumbotron jumbotron-fluid page-header position-relative overlay-bottom" style="margin-bottom: 90px;">
     <div class="container text-center py-5">
         <h1 class="text-white display-1" id="course-header-code">Loading...</h1>
         <div class="d-inline-flex text-white mb-5">
-            <p class="m-0 text-uppercase"><a class="text-white" href="{{ url_for('views.home') }}">home</a></p>
+            <p class="m-0 text-uppercase"><a class="text-white" href="{{ url_for('views.home') }}">Home</a></p>
             <i class="fa fa-angle-double-right pt-1 px-3"></i>
-            <p class="m-0 text-uppercase"><a class="text-white" href="{{ url_for('views.course') }}">Courses</a></p>
+            <p class="m-0 text-uppercase"><a class="text-white" href="{{ url_for('views.courses') }}">Courses</a></p>
             <i class="fa fa-angle-double-right pt-1 px-3"></i>
             <p class="m-0 text-uppercase" id="breadcrumb-title">...</p>
         </div>
     </div>
 </div>
+
 <div class="container-fluid py-5">
     <div class="container py-5">
         <div class="row">
@@ -23,9 +24,10 @@
                 <div class="mb-5">
                     <img class="img-fluid rounded w-100 mb-4" id="course-image" src="{{ url_for('static', filename='img/courses-1.jpg') }}" alt="Course Image">
                     
-                    <h1 class="mb-3" id="course-title">Loading course details...</h1>
+                    <h1 class="mb-3" id="course-title">Loading...</h1>
+                    
                     <h2 class="mb-4 h4">Course Description</h2>
-                    <p id="course-description">...</p>
+                    <p id="course-description">Please wait while we fetch the course information.</p>
                     
                     <h3 class="mb-3 mt-5">Prerequisites</h3>
                     <p id="course-prereqs">...</p>
@@ -35,7 +37,7 @@
             <div class="col-lg-4">
                 <div class="card border-0 shadow-sm" style="position: sticky; top: 20px;">
                     <div class="card-header bg-white border-0 p-4">
-                        <a href="#" class="btn btn-secondary btn-block btn-lg py-3">Enroll Now</a>
+                        <button onclick="handleEnroll()" id="btn-enroll" class="btn btn-secondary btn-block btn-lg py-3" disabled>Loading...</button>
                     </div>
                     
                     <div class="card-body p-4">
@@ -85,67 +87,110 @@
         </div>
     </div>
 </div>
+
 <script>
-    // This function runs when the page finishes loading
+    // 1. Get the course_id safely from Jinja
+    let currentCourseData = null;
+
     document.addEventListener('DOMContentLoaded', () => {
-        // 1. Get the course_id passed from Flask
-        //    We use |tojson to safely convert the Python string into a JS string
-        const courseId = { course_i};
-        
-        // 2. Call the function to fetch and populate data
-        populateCourseData(courseId);
+        const dataElement = document.getElementById('course-data');
+        const courseId = dataElement ? dataElement.dataset.courseId : null;
+        if(courseId) populateCourseData(courseId);
     });
 
-    // Fetches data from your API and updates the HTML
-    async function populateCourseData(courseId) {
+    async function populateCourseData(id) {
         try {
-            // 3. Fetch data from your API
-            //    (I am assuming you have an endpoint like '/api/course/<id>'
-            //    and that apiFetch is defined elsewhere, as in your previous file)
-            const course = await apiFetch(`/api/course/${courseId}`);
-            print(course)
-            if (!course) {
-                document.getElementById('course-title').innerText = "Error: Course not found.";
+            const course = await apiFetch(`/api/courses/${id}`);
+            currentCourseData = course;
+
+            if (!course || course.error) {
+                document.getElementById('course-title').innerText = "Course not found.";
                 return;
             }
 
-            // 4. Populate all the placeholders with data
-            
-            // Update page title
+            // --- Update Header & Text ---
             document.title = `${course.course_name} - Edukate`;
-
-            // Headers
             document.getElementById('course-header-code').innerText = course.course_code;
             document.getElementById('breadcrumb-title').innerText = course.course_name;
-
-            // Main Content
             document.getElementById('course-title').innerText = course.course_name;
-            document.getElementById('course-description').innerText = course.description;
-            document.getElementById('course-prereqs').innerText = (course.prerequisites && course.prerequisites !== 'None') 
-                ? `This course requires the successful completion of: ${course.prerequisites}.`
-                : "There are no prerequisites for this course.";
+            document.getElementById('course-description').innerText = course.description || "No description available.";
+            
+            // --- Prerequisites ---
+            const prereqs = course.prerequisites;
+            document.getElementById('course-prereqs').innerText = (prereqs && prereqs !== 'None') 
+                ? `Requires: ${prereqs}`
+                : "No prerequisites required.";
 
-            // Sidebar Details
+            // --- Sidebar Details ---
             document.getElementById('course-instructor').innerText = course.instructor_name;
             document.getElementById('course-code').innerText = course.course_code;
             document.getElementById('course-credits').innerText = course.credits;
             document.getElementById('course-term').innerText = course.academic_term;
             document.getElementById('course-capacity').innerText = `${course.max_capacity} Students`;
 
-            // Enrollment Status
-            document.getElementById('course-slots-left').innerText = course.slots_left;
-            document.getElementById('course-slots-filled').innerText = `${course.current_enrollment} of ${course.max_capacity} slots filled`;
+            // --- Enrollment Stats ---
+            const current = course.current_enrollment;
+            const max = course.max_capacity;
+            const left = course.slots_left;
             
-            // Calculate and set progress bar
-            const percent = (course.current_enrollment / course.max_capacity) * 100;
+            document.getElementById('course-slots-left').innerText = left;
+            document.getElementById('course-slots-filled').innerText = `${current} of ${max} slots filled`;
+
+            // Progress Bar Logic
+            const percent = max > 0 ? Math.min((current / max) * 100, 100) : 0;
             const progressBar = document.getElementById('course-progress-bar');
             progressBar.style.width = `${percent}%`;
-            progressBar.setAttribute('aria-valuenow', course.current_enrollment);
-            progressBar.setAttribute('aria-valuemax', course.max_capacity);
+            
+            // Update Button State
+            const btn = document.getElementById('btn-enroll');
+            if (left <= 0) {
+                btn.innerText = "Course Full";
+                btn.disabled = true;
+                btn.classList.add('btn-danger');
+                btn.classList.remove('btn-secondary');
+            } else {
+                btn.innerText = "Enroll Now";
+                btn.disabled = false;
+                btn.classList.remove('btn-danger');
+                btn.classList.add('btn-secondary');
+            }
 
         } catch (error) {
-            console.error("Failed to load course details:", error);
-            document.getElementById('course-title').innerText = "Error loading course data.";
+            console.error("Error:", error);
+            document.getElementById('course-title').innerText = "Error loading data.";
+        }
+    }
+
+    async function handleEnroll() {
+        // 1. Auth Check
+        if (!currentState.loggedIn) {
+            window.location.href = '/login';
+            return;
+        }
+        // 2. Role Check
+        if (currentState.userRole !== 'student') {
+            alert("Only students can enroll.");
+            return;
+        }
+
+        if(!confirm(`Confirm enrollment in ${currentCourseData.course_code}?`)) return;
+
+        // 3. API Call
+        try {
+            const payload = {
+                student_id: currentState.studentId,
+                course_id: courseId
+            };
+            // apiFetch handles stringify automatically now
+            const response = await apiFetch('/api/enroll', {
+                method: 'POST',
+                body: payload
+            });
+
+            alert(response.message || "Success!");
+            populateCourseData(courseId); // Refresh stats
+        } catch (error) {
+            alert(error.message);
         }
     }
 </script>
