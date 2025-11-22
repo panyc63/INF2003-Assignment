@@ -347,7 +347,7 @@ def get_course_data():
         print(results)
     return results
 
-def get_course_details_by_id(course_id):
+def get_course_details_by_id(course_id, student_id=None):
     """
     Fetches comprehensive details for a single course, including 
     instructor name, enrollment counts, and prerequisites.
