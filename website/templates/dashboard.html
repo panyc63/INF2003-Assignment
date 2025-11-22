@@ -5,7 +5,6 @@
 {% block content %}
 <div id="status-message-container" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-4">
 </div>
-<!-- Popup Modal -->
 <div id="enroll-popup-overlay"
     class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
     <div id="enroll-popup" class="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
@@ -13,8 +12,7 @@
             Error
         </h3>
         <p id="enroll-popup-message" class="text-sm text-gray-700 mb-4">
-            <!-- message goes here -->
-        </p>
+            </p>
         <div class="text-right">
             <button type="button" class="btn-secondary px-4 py-2" onclick="closeEnrollPopup()">
                 Close
@@ -29,38 +27,27 @@
         <p class="text-xl text-blue-600" id="welcome-message">Welcome back, loading...</p>
     </div>
 
-    <!-- === Student Metrics Cards === -->
     <div class="grid md:grid-cols-3 gap-6 mb-6">
-
-        <!-- Current GPA (still hardcoded or later dynamic) -->
         <div class="card p-8 text-center">
             <p class="text-sm text-gray-600">Current GPA</p>
             <p class="text-3xl font-bold text-gray-900" id="metric-gpa">3.85</p>
         </div>
-
-        <!-- Enrolled Courses -->
         <div class="card p-8 text-center">
             <p class="text-sm text-gray-600">Current Enrollments</p>
-            <p class="text-3xl font-bold text-gray-900" id="metric-enrolled-count">5</p>
+            <p class="text-3xl font-bold text-gray-900" id="metric-enrolled-count">0</p>
         </div>
-
-        <!-- Completed Courses -->
         <div class="card p-8 text-center">
             <p class="text-sm text-gray-600">Completed Courses</p>
-            <p class="text-3xl font-bold text-gray-900" id="metric-completed-count">7</p>
+            <p class="text-3xl font-bold text-gray-900" id="metric-completed-count">0</p>
         </div>
-
     </div>
-    <!-- === End Metrics Cards === -->
 
     <div id="student-info-section" class="grid md:grid-cols-2 gap-6 mb-8">
-        <!-- Left: Enrolled -->
         <div class="card bg-yellow-50">
             <h3 class="text-xl font-semibold m-3">Current Enrollments</h3>
             <div id="enrolled-list" class="space-y-2 text-sm">Loading...</div>
         </div>
 
-        <!-- Right: Completed -->
         <div class="card bg-green-50">  
             <h3 class="text-xl font-semibold m-3">Completed Courses</h3>
             <div id="completed-list" class="space-y-2 text-sm">Loading...</div>
@@ -71,17 +58,20 @@
         <h3 class="text-xl font-semibold m-3 ">Search Courses</h3>
         <form id="course-search-form" class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
             <input type="text" id="search-query" placeholder="e.g., Core classes, Alan Turing, CS101"
-                class="flex-grow p-3 border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500"
+                class="flex-grow p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
                 required>
             <button type="submit" class="btn-primary flex-shrink-0 p-3">Search</button>
         </form>
     </div>
 
+    <div id="pagination-controls" class="mt-3 mb-3 flex justify-center items-center space-x-2 flex-wrap gap-y-2 hidden">
+    </div>
+
     <div id="scroll-to-view" class="card">
         <h3 class="text-2xl font-semibold mb-4 border-b pb-2">Available Courses</h3>
-        <div id="course-results-list" class="divide-y divide-gray-200">
-            <p class="text-center text-gray-500 p-6">Use the search bar above to find courses, or click "Show All" to
-                browse.</p>
+        
+        <div id="course-results-list" class="divide-y divide-gray-200 min-h-[200px]">
+            <p class="text-center text-gray-500 p-6">Use the search bar above to find courses, or click "Show All" to browse.</p>
             <button class="btn-secondary w-full mt-4" onclick="handleShowAllCourses()">Show All Courses</button>
         </div>
     </div>
@@ -96,7 +86,7 @@
 
         if (!overlay || !titleEl || !msgEl) {
             console.error("Popup elements not found in DOM.");
-            alert(message); // Fallback
+            alert(message); 
             return;
         }
 
@@ -118,8 +108,14 @@
         if (overlay) overlay.classList.add('hidden');
     }
 
-    // --- 2. GLOBAL DATA ---
+    // --- 2. GLOBAL DATA & STATE ---
     let allStudentEnrollments = [];
+    
+    // Pagination State
+    let currentSearchResults = []; // Holds the full list of courses currently being viewed
+    let currentPage = 1;
+    const itemsPerPage = 5;
+    let isCurrentSearchLocal = false; // Tracks if we are looking at local search results (vs API results)
 
     // --- 3. INIT ---
     document.addEventListener('DOMContentLoaded', () => {
@@ -228,7 +224,7 @@
             if (data && data.message) {
                 showEnrollPopup(data.message, 'success');
                 await loadStudentEnrollments();
-                await handleShowAllCourses(); // Refresh available list to update buttons
+                await handleShowAllCourses(); // Refresh available list
             }
         } catch (error) {
             showEnrollPopup(error.message || 'Enrollment failed.', 'error');
@@ -257,11 +253,13 @@
         }
     }
 
-    // --- 6. SEARCH & DISPLAY LOGIC ---
+    // --- 6. SEARCH & DATA FETCHING LOGIC ---
     async function handleShowAllCourses() {
         try {
             const results = await apiFetch('/api/courses');
             if (results) {
+                // Reset search box visually
+                document.getElementById('search-query').value = '';
                 displayCourseResults(results);
             }
         } catch (error) {
@@ -285,7 +283,7 @@
                 .replace(/year (\d)/g, 'y$1')
                 .replace(/trimester (\d)/g, 't$1')
                 .replace(/tri (\d)/g, 't$1')
-                .replace(/\s/g, ''); // Remove spaces -> 'y1t1'
+                .replace(/\s/g, ''); 
 
             const results = allStudentEnrollments.filter(course => {
                 const searchCorpus = `${course.course_name.toLowerCase()} ${course.course_id.toLowerCase()} ${course.academic_term.toLowerCase()}`;
@@ -350,14 +348,17 @@
         if(scrollToView) scrollToView.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    function displayCourseResults(courses, isLocalSearch = false) {
+    // --- 7. PAGINATION & RENDERING LOGIC ---
+
+    // Phase 1: Process Data (Sort and Save)
+    function displayCourseResults(courses, isLocal = false) {
         const resultsList = document.getElementById('course-results-list');
         if (!resultsList) return;
 
         if (courses.length === 0) {
             resultsList.innerHTML = `<p class="text-center text-red-500 p-6">No courses matched your query.</p>`;
-            // Add "Show All" button even when empty
             resultsList.innerHTML += `<button class="btn-secondary w-full mt-4 py-2" onclick="handleShowAllCourses()">Show All Courses</button>`;
+            document.getElementById('pagination-controls').classList.add('hidden');
             return;
         }
 
@@ -367,7 +368,7 @@
             if (c.course_id) enrollmentStatusById[c.course_id] = c.status;
         });
 
-        // Sort: Available first
+        // Sort: Available first (Unenrolled -> Enrolled)
         const sortedCourses = [...courses].sort((a, b) => {
             const aEnrolled = !!enrollmentStatusById[a.course_id];
             const bEnrolled = !!enrollmentStatusById[b.course_id];
@@ -375,7 +376,32 @@
             return aEnrolled ? 1 : -1;
         });
 
-        const listContent = sortedCourses.map(course => {
+        // Update Global State
+        currentSearchResults = sortedCourses;
+        isCurrentSearchLocal = isLocal;
+        currentPage = 1; // Reset to page 1 on new data
+
+        // Trigger Render
+        renderPage();
+        renderPaginationControls();
+    }
+
+    // Phase 2: Render Specific Page
+    function renderPage() {
+        const resultsList = document.getElementById('course-results-list');
+        
+        // Calculate Slice
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const paginatedItems = currentSearchResults.slice(startIndex, endIndex);
+
+        // Enrollment map needed again for button logic
+        const enrollmentStatusById = {};
+        allStudentEnrollments.forEach(c => {
+            if (c.course_id) enrollmentStatusById[c.course_id] = c.status;
+        });
+
+        const listContent = paginatedItems.map(course => {
             const courseId = course.course_id;
             const courseCode = course.course_id || courseId;
             const courseName = course.course_name || course.title;
@@ -390,7 +416,7 @@
 
             // Button Logic
             let buttonHtml = '';
-            if (isLocalSearch) {
+            if (isCurrentSearchLocal) {
                 const localStatus = course.status || 'Completed';
                 const colorClass = (localStatus === 'Enrolled') ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700';
                 buttonHtml = `<button class="btn-secondary ${colorClass} cursor-not-allowed" disabled>${localStatus}</button>`;
@@ -428,7 +454,112 @@
         }).join('');
 
         resultsList.innerHTML = listContent;
-        resultsList.innerHTML += `<button class="btn-secondary w-full mt-4 py-2" onclick="handleShowAllCourses()">Show All Courses</button>`;
+    }
+
+    // Phase 3: Render Pagination Controls
+    function renderPaginationControls() {
+        const paginationContainer = document.getElementById('pagination-controls');
+        const totalPages = Math.ceil(currentSearchResults.length / itemsPerPage);
+
+        if (totalPages <= 1) {
+            paginationContainer.classList.add('hidden');
+            return;
+        } else {
+            paginationContainer.classList.remove('hidden');
+        }
+
+        let paginationHTML = '';
+
+        // --- Previous Button ---
+        paginationHTML += `
+            <button 
+                onclick="changePage(${currentPage - 1})" 
+                class="px-3 py-1 border rounded-md ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed bg-gray-50' : 'text-blue-600 hover:bg-blue-50 bg-white'}"
+                ${currentPage === 1 ? 'disabled' : ''}>
+                &laquo;
+            </button>
+        `;
+
+        // --- Smart Page Numbers Logic ---
+        const generatePageButton = (page) => `
+            <button 
+                onclick="changePage(${page})" 
+                class="px-3 py-1 border rounded-md ${page === currentPage ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-700 hover:bg-gray-100 bg-white'}">
+                ${page}
+            </button>
+        `;
+
+        const generateEllipsis = () => `
+            <span class="px-2 text-gray-400">...</span>
+        `;
+
+        // Logic to determine which numbers to show
+        if (totalPages <= 7) {
+            // If 7 or fewer pages, show them all
+            for (let i = 1; i <= totalPages; i++) {
+                paginationHTML += generatePageButton(i);
+            }
+        } else {
+            // If many pages, show: First ... Neighbors ... Last
+            
+            // 1. Always show First Page
+            paginationHTML += generatePageButton(1);
+
+            // 2. Handle Start Ellipsis
+            if (currentPage > 3) {
+                paginationHTML += generateEllipsis();
+            }
+
+            // 3. Middle Neighbors (Current - 1, Current, Current + 1)
+            // We clamp the values so we don't repeat 1 or Total
+            let startPage = Math.max(2, currentPage - 1);
+            let endPage = Math.min(totalPages - 1, currentPage + 1);
+
+            // Edge case adjustments for near-start or near-end
+            if (currentPage <= 3) {
+                endPage = 4; // Show 1, 2, 3, 4 ...
+            }
+            if (currentPage >= totalPages - 2) {
+                startPage = totalPages - 3; // Show ... 22, 23, 24, 25
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                paginationHTML += generatePageButton(i);
+            }
+
+            // 4. Handle End Ellipsis
+            if (currentPage < totalPages - 2) {
+                paginationHTML += generateEllipsis();
+            }
+
+            // 5. Always show Last Page
+            paginationHTML += generatePageButton(totalPages);
+        }
+
+        // --- Next Button ---
+        paginationHTML += `
+            <button 
+                onclick="changePage(${currentPage + 1})" 
+                class="px-3 py-1 border rounded-md ${currentPage === totalPages ? 'text-gray-400 cursor-not-allowed bg-gray-50' : 'text-blue-600 hover:bg-blue-50 bg-white'}"
+                ${currentPage === totalPages ? 'disabled' : ''}>
+                &raquo;
+            </button>
+        `;
+
+        paginationContainer.innerHTML = paginationHTML;
+    }
+
+    function changePage(newPage) {
+        const totalPages = Math.ceil(currentSearchResults.length / itemsPerPage);
+        if (newPage < 1 || newPage > totalPages) return;
+
+        currentPage = newPage;
+        renderPage();
+        renderPaginationControls();
+        
+        // Optional: scroll to top of results
+        const listTop = document.getElementById('course-results-list');
+        if (listTop) listTop.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 </script>
 {% endblock %}
