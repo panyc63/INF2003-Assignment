@@ -116,7 +116,7 @@
 
             // --- Update Text ---
             document.title = `${course.course_name} - Edukate`;
-            document.getElementById('course-header-code').innerText = course.course_code;
+            document.getElementById('course-header-code').innerText = course.course_id;
             document.getElementById('breadcrumb-title').innerText = course.course_name;
             document.getElementById('course-title').innerText = course.course_name;
             document.getElementById('course-description').innerText = course.description || "No description available.";
@@ -129,7 +129,7 @@
 
             // Sidebar
             document.getElementById('course-instructor').innerText = course.instructor_name;
-            document.getElementById('course-code').innerText = course.course_code;
+            document.getElementById('course-code').innerText = course.course_id;
             document.getElementById('course-credits').innerText = course.credits;
             document.getElementById('course-term').innerText = course.academic_term;
             document.getElementById('course-capacity').innerText = `${course.max_capacity} Students`;
@@ -190,7 +190,7 @@
             return;
         }
 
-        if(!confirm(`Confirm enrollment in ${currentCourseData.course_code}?`)) return;
+        if(!confirm(`Confirm enrollment in ${currentCourseData.course_id}?`)) return;
 
         try {
             const payload = {

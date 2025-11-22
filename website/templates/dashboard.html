@@ -169,7 +169,7 @@
                             Taught by: ${course.instructor_name} (${course.credits} Credits)
                         </span>
                         <span class="text-xs font-semibold text-gray-700 bg-gray-200 px-2 py-1 rounded-full mt-1 inline-block">
-                            ${course.semester}
+                            ${course.academic_term}
                         </span>
                     </div>
                     <button
@@ -195,7 +195,7 @@
                             Taught by: ${course.instructor_name} (${course.credits} Credits)
                         </span>
                         <span class="text-xs font-semibold text-gray-700 bg-gray-200 px-2 py-1 rounded-full mt-1 inline-block">
-                            ${course.semester}
+                            ${course.academic_term}
                         </span>
                     </div>
                     <div class="text-right">
@@ -288,7 +288,7 @@
                 .replace(/\s/g, ''); // Remove spaces -> 'y1t1'
 
             const results = allStudentEnrollments.filter(course => {
-                const searchCorpus = `${course.course_name.toLowerCase()} ${course.course_id.toLowerCase()} ${course.semester.toLowerCase()}`;
+                const searchCorpus = `${course.course_name.toLowerCase()} ${course.course_id.toLowerCase()} ${course.academic_term.toLowerCase()}`;
                 return searchCorpus.includes(localQuery);
             });
 
@@ -377,7 +377,7 @@
 
         const listContent = sortedCourses.map(course => {
             const courseId = course.course_id;
-            const courseCode = course.course_code || courseId;
+            const courseCode = course.course_id || courseId;
             const courseName = course.course_name || course.title;
             const description = course.description || 'No description available.';
             const prereqs = course.prerequisites || 'N/A';

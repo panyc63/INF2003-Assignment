@@ -89,10 +89,10 @@ def search_courses():
     clean_query = original_query.replace(" ", "")
     
     # Regex: 1-4 letters, 3-4 numbers (matches "inf1002", "cs101")
-    course_code_pattern = re.compile(r'^[a-zA-Z]{1,4}\d{3,4}[a-zA-Z]?$')
+    course_id_pattern = re.compile(r'^[a-zA-Z]{1,4}\d{3,4}[a-zA-Z]?$')
     
     # --- STRATEGY 1: CODE LOOKUP ---
-    if course_code_pattern.match(clean_query):
+    if course_id_pattern.match(clean_query):
         
         # A. Try Exact Match
         exact_matches = list(mongo.db.courses.find(
@@ -190,9 +190,9 @@ def search_courses():
     # --- 1. EXACT MATCH CHECK (Regex/Fuzzy) ---
     # (Keep your existing Regex/Fuzzy logic here, it is fine)
     clean_query = original_query.replace(" ", "")
-    course_code_pattern = re.compile(r'^[a-zA-Z]{1,4}\d{3,4}[a-zA-Z]?$')
+    course_id_pattern = re.compile(r'^[a-zA-Z]{1,4}\d{3,4}[a-zA-Z]?$')
     
-    if course_code_pattern.match(clean_query):
+    if course_id_pattern.match(clean_query):
         # ... (Keep your exact/fuzzy match logic) ...
         # (If you need me to paste the whole thing again let me know, 
         # but the error is in the vector section below)

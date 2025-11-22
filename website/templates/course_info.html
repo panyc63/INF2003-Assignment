@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}{{ course.course_code }} - {{ course.course_name }}{% endblock %}
+{% block title %}{{ course.course_id }} - {{ course.course_name }}{% endblock %}
 
 {% block content %}
     <div class="jumbotron jumbotron-fluid page-header position-relative overlay-bottom" style="margin-bottom: 90px;">
         <div class="container text-center py-5">
-            <h1 class="text-white display-1">{{ course.course_code }}</h1>
+            <h1 class="text-white display-1">{{ course.course_id }}</h1>
             <div class="d-inline-flex text-white mb-5">
                 <p class="m-0 text-uppercase"><a class="text-white" href="{{ url_for('views.home') }}">Home</a></p>
                 <i class="fa fa-angle-double-right pt-1 px-3"></i>
                 <p class="m-0 text-uppercase"><a class="text-white" href="{{ url_for('views.course') }}">Course</a></p>
                 <i class="fa fa-angle-double-right pt-1 px-3"></i>
-                <p class="m-0 text-uppercase">{{ course.course_code }}</p>
+                <p class="m-0 text-uppercase">{{ course.course_id }}</p>
             </div>
         </div>
     </div>
@@ -27,7 +27,7 @@
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             Course Code:
-                            <span class="badge badge-primary badge-pill">{{ course.course_code }}</span>
+                            <span class="badge badge-primary badge-pill">{{ course.course_id }}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             Academic Term:

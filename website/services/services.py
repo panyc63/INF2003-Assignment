@@ -37,7 +37,6 @@ def get_course_details_by_ids_list(course_ids: List[str]) -> List[Dict[str, Any]
         
         results.append({
             "course_id": c.course_id,
-            "course_code": c.course_code,
             "course_name": c.course_name,
             "description": c.description,
             "prerequisites": "None", # Add logic if needed
@@ -98,7 +97,7 @@ def check_prerequisites(student_id, course_id):
         return True, []
 
 # Handles the enrollment transaction with slot checking and prerequisite checking.
-def enroll_student_in_course(student_id, course_id, semester="Fall 2025"):
+def enroll_student_in_course(student_id, course_id):
     student_sql = text("""
         SELECT u.first_name 
         FROM students s 
@@ -135,10 +134,10 @@ def enroll_student_in_course(student_id, course_id, semester="Fall 2025"):
 
     try:
         insert_sql = text("""
-            INSERT INTO enrollments (student_id, course_id, semester, status) 
-            VALUES (:sid, :cid, :sem, 'Enrolled')
+            INSERT INTO enrollments (student_id, course_id, status) 
+            VALUES (:sid, :cid, 'Enrolled')
         """)
-        db.session.execute(insert_sql, {"sid": student_id, "cid": course_id, "sem": semester})
+        db.session.execute(insert_sql, {"sid": student_id, "cid": course_id})
         
         update_sql = text("""
             UPDATE courses 
@@ -148,7 +147,7 @@ def enroll_student_in_course(student_id, course_id, semester="Fall 2025"):
         db.session.execute(update_sql, {"cid": course_id})
         
         db.session.commit()
-        return f"Successfully enrolled {student.first_name} in {course.course_code} - {course.course_name} for {semester}."
+        return f"Successfully enrolled {student.first_name} in {course.course_id} - {course.course_name}."
     
     except IntegrityError as e:
         db.session.rollback()
@@ -229,7 +228,7 @@ def weighted_search_and_merge(
     # Retrieve course taught by specific instructor with flexible condition
     sql = text(f"""
         SELECT 
-            c.course_id, c.course_code, c.course_name, c.description,
+            c.course_id, c.course_name, c.description,
             c.credits, c.academic_term, c.max_capacity, c.current_enrollment,
             u.first_name AS instructor_first, 
             u.last_name AS instructor_last
@@ -251,7 +250,6 @@ def weighted_search_and_merge(
             
             final_results_map[course_id] = {
                 "course_id": course_id,
-                "course_code": course.course_code,
                 "title": course.course_name,
                 "description": course.description,
                 "credits": course.credits,
@@ -274,7 +272,7 @@ def semantic_search(query: str) -> List[Dict[str, Any]]:
     # Search 1: Course ID/Code (Weight: 5)
     weighted_search_and_merge(
         weight=5, 
-        conditions="c.course_id LIKE :q OR c.course_code LIKE :q",
+        conditions="c.course_id LIKE :q",
         search_pattern=search_pattern,
         final_results_map=final_results_map
     )
@@ -335,7 +333,6 @@ def get_course_data():
 
         results.append({
             "course_id": c.course_id,
-            "course_code": c.course_code,
             "course_name": c.course_name,
             "description": c.description,
             "prerequisites": ", ".join(prereqs) if prereqs else "None",
@@ -384,7 +381,6 @@ def get_course_details_by_id(course_id):
         
         return {
             "course_id": course.course_id, 
-            "course_code": course.course_code,
             "course_name": course.course_name,
             "credits": course.credits,
             "description": course.description,
@@ -490,7 +486,6 @@ def get_student_enrollments(student_id):
     sql = text("""
         SELECT 
             c.course_id, c.course_name, c.credits, c.academic_term,
-            e.semester,
             e.status,
             e.final_grade,
             u.first_name AS instructor_first, 
@@ -516,7 +511,6 @@ def get_student_enrollments(student_id):
             "credits": enrollment.credits,
             "academic_term": enrollment.academic_term,
             "instructor_name": instructor_name,
-            "semester": enrollment.semester,
             "status": enrollment.status,
             "final_grade": enrollment.final_grade
         })
@@ -526,7 +520,7 @@ def get_student_enrollments(student_id):
 # Fetches all courses taught by a specific instructor ID.
 def get_instructor_courses(instructor_id):
     sql = text("""
-        SELECT course_id, course_code, course_name, description, 
+        SELECT course_id, course_name, description, 
                credits, max_capacity, COALESCE(current_enrollment, 0) AS current_enrollment
         FROM courses 
         WHERE instructor_id = :iid
@@ -536,7 +530,6 @@ def get_instructor_courses(instructor_id):
     return [
         {
             "course_id": c.course_id,
-            "course_code": c.course_code,
             "course_name": c.course_name,
             "description": c.description,
             "credits": c.credits,
@@ -585,13 +578,12 @@ def create_course(data):
             raise ValueError("Course ID and Name are required.")
 
         sql = text("""
-            INSERT INTO courses (course_id, course_code, course_name, description, credits, academic_term, max_capacity, instructor_id)
-            VALUES (:id, :code, :name, :desc, :credits, :term, :cap, :inst_id)
+            INSERT INTO courses (course_id, course_name, description, credits, academic_term, max_capacity, instructor_id)
+            VALUES (:id, :name, :desc, :credits, :term, :cap, :inst_id)
         """)
         
         db.session.execute(sql, {
             "id": data['course_id'],
-            "code": data.get('course_code', data['course_id']), # Default code to ID if missing
             "name": data['course_name'],
             "desc": data.get('description', ''),
             "credits": data.get('credits', 6),

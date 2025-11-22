@@ -58,7 +58,6 @@ class Instructor(db.Model):
 class Course(db.Model):
     __tablename__ = 'courses'
     course_id = db.Column(db.String(10), primary_key=True)
-    course_code = db.Column(db.String(10), nullable=False, unique=True)
     course_name = db.Column(db.String(150), nullable=False)
     description = db.Column(db.Text)
     credits = db.Column(db.Integer)
@@ -77,7 +76,7 @@ class Course(db.Model):
     is_prerequisite_for = db.relationship("Prerequisites", foreign_keys='Prerequisites.requires_course_id', back_populates="prerequisite_course", lazy='dynamic', cascade="all, delete-orphan")
 
     def __repr__(self):
-        return f"<Course {self.course_code}: {self.course_name}>"
+        return f"<Course {self.course_id}: {self.course_name}>"
 
 # Defines the many-to-many relationship for course prerequisites.
 class Prerequisites(db.Model):
@@ -97,7 +96,6 @@ class Enrollment(db.Model):
     student_id = db.Column(db.Integer, db.ForeignKey('students.student_id'), primary_key=True)
     course_id = db.Column(db.String(10), db.ForeignKey('courses.course_id'), primary_key=True)
     
-    semester = db.Column(db.String(20), nullable=False)
     enrolled_at = db.Column(db.DateTime, default=datetime.utcnow) 
     final_grade = db.Column(db.String(2)) 
     status = db.Column(db.String(20), default='Enrolled')

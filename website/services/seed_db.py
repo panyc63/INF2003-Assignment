@@ -25,11 +25,11 @@ MOCK_STUDENTS = [
 ]
 
 MOCK_COURSES = [
-    {"course_id": "CS101", "course_code": "CS101", "course_name": "Fundamentals of Programming", "description": "Intro to Python. Foundational course for all majors.", "credits": 4, "academic_term": "Fall 2025", "max_capacity": 10, "instructor_id": 1},
-    {"course_id": "CS205", "course_code": "CS205", "course_name": "Database Systems", "description": "Relational algebra, SQL, and database design. Core IT class.", "credits": 4, "academic_term": "Fall 2025", "max_capacity": 5, "instructor_id": 1},
-    {"course_id": "ENG101", "course_code": "ENG101", "course_name": "Circuit Analysis", "description": "Basic electric circuits, Ohm's law.", "credits": 3, "academic_term": "Fall 2025", "max_capacity": 15, "instructor_id": 2},
-    {"course_id": "MATH301", "course_code": "MATH301", "course_name": "Advanced Calculus", "description": "Differential equations and multivariate calculus.", "credits": 4, "academic_term": "Spring 2026", "max_capacity": 10, "instructor_id": 3},
-    {"course_id": "CS400", "course_code": "CS400", "course_name": "Artificial Intelligence Concepts", "description": "A postgraduate level course exploring ML, neural networks, and AI ethics.", "credits": 4, "academic_term": "Fall 2025", "max_capacity": 8, "instructor_id": 3},
+    {"course_id": "CS101", "course_name": "Fundamentals of Programming", "description": "Intro to Python. Foundational course for all majors.", "credits": 4, "academic_term": "Fall 2025", "max_capacity": 10, "instructor_id": 1},
+    {"course_id": "CS205", "course_name": "Database Systems", "description": "Relational algebra, SQL, and database design. Core IT class.", "credits": 4, "academic_term": "Fall 2025", "max_capacity": 5, "instructor_id": 1},
+    {"course_id": "ENG101", "course_name": "Circuit Analysis", "description": "Basic electric circuits, Ohm's law.", "credits": 3, "academic_term": "Fall 2025", "max_capacity": 15, "instructor_id": 2},
+    {"course_id": "MATH301", "course_name": "Advanced Calculus", "description": "Differential equations and multivariate calculus.", "credits": 4, "academic_term": "Spring 2026", "max_capacity": 10, "instructor_id": 3},
+    {"course_id": "CS400", "course_name": "Artificial Intelligence Concepts", "description": "A postgraduate level course exploring ML, neural networks, and AI ethics.", "credits": 4, "academic_term": "Fall 2025", "max_capacity": 8, "instructor_id": 3},
 ]
 
 MOCK_PREREQS = [
