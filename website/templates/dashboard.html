@@ -46,7 +46,7 @@
 
         <!-- Completed Courses -->
         <div class="card p-8 text-center">
-            <p class="text-sm text-gray-600">Completed Courses</p>
+            <p class="text-sm text-gray-600">Completed Modules</p>
             <p class="text-3xl font-bold text-gray-900" id="metric-completed-count">7</p>
         </div>
 
@@ -61,15 +61,15 @@
         </div>
 
         <!-- Right: Completed -->
-        <div class="card bg-green-50">  
-            <h3 class="text-xl font-semibold m-3">Completed Courses</h3>
+        <div class="card bg-green-50">
+            <h3 class="text-xl font-semibold m-3">Completed Modules</h3>
             <div id="completed-list" class="space-y-2 text-sm">Loading...</div>
         </div>
     </div>
 
     <div class="card mb-8">
-        <h3 class="text-xl font-semibold m-3 ">Search Courses</h3>
-        <form id="course-search-form" class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+        <h3 class="text-xl font-semibold m-3 ">Search Modules</h3>
+        <form id="module-search-form" class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
             <input type="text" id="search-query" placeholder="e.g., Core classes, Alan Turing, CS101"
                 class="flex-grow p-3 border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500"
                 required>
@@ -78,11 +78,11 @@
     </div>
 
     <div id="scroll-to-view" class="card">
-        <h3 class="text-2xl font-semibold mb-4 border-b pb-2">Available Courses</h3>
-        <div id="course-results-list" class="divide-y divide-gray-200">
-            <p class="text-center text-gray-500 p-6">Use the search bar above to find courses, or click "Show All" to
+        <h3 class="text-2xl font-semibold mb-4 border-b pb-2">Available Modules</h3>
+        <div id="module-results-list" class="divide-y divide-gray-200">
+            <p class="text-center text-gray-500 p-6">Use the search bar above to find modules, or click "Show All" to
                 browse.</p>
-            <button class="btn-secondary w-full mt-4" onclick="handleShowAllCourses()">Show All Courses</button>
+            <button class="btn-secondary w-full mt-4" onclick="handleShowAllModules()">Show All Modules</button>
         </div>
     </div>
 </div>
@@ -93,15 +93,8 @@
         const overlay = document.getElementById('enroll-popup-overlay');
         const titleEl = document.getElementById('enroll-popup-title');
         const msgEl = document.getElementById('enroll-popup-message');
-
-        if (!overlay || !titleEl || !msgEl) {
-            console.error("Popup elements not found in DOM.");
-            alert(message); // Fallback
-            return;
-        }
-
+        if (!overlay || !titleEl || !msgEl) { alert(message); return; }
         msgEl.textContent = message || '';
-
         if (type === 'success') {
             titleEl.textContent = 'Success';
             titleEl.className = 'text-lg font-bold text-green-600 mb-2';
@@ -109,7 +102,6 @@
             titleEl.textContent = 'Error';
             titleEl.className = 'text-lg font-bold text-red-600 mb-2';
         }
-
         overlay.classList.remove('hidden');
     }
 
@@ -120,288 +112,238 @@
 
     // --- 2. GLOBAL DATA ---
     let allStudentEnrollments = [];
+    let studentMajorId = null; // <--- NEW: Store the dynamic major here
 
     // --- 3. INIT ---
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => { // Made async
         if (!currentState.loggedIn) { return; }
+        document.getElementById('welcome-message').textContent = 
+            `Welcome back, ${currentState.userName} (ID: ${currentState.studentId})`;
+        
+        // 1. Fetch Student Details (To get Major ID)
+        await loadStudentProfile(); 
 
-        const welcomeEl = document.getElementById('welcome-message');
-        if(welcomeEl) welcomeEl.textContent = `Welcome back, ${currentState.userName} (ID: ${currentState.studentId})`;
-
+        // 2. Load Enrollments & Search
         loadStudentEnrollments();
-        
-        const searchForm = document.getElementById('course-search-form');
-        if(searchForm) searchForm.addEventListener('submit', handleCourseSearch);
-        
-        handleShowAllCourses();
+        document.getElementById('module-search-form').addEventListener('submit', handleModuleSearch);
+        handleShowAllModules();
     });
 
-    // --- 4. LOAD STUDENT DATA ---
+    // --- NEW: Fetch Major ID from Database ---
+    async function loadStudentProfile() {
+        try {
+            const data = await apiFetch(`/api/students/${currentState.studentId}`);
+            if (data && data.major_id) {
+                studentMajorId = data.major_id; // e.g., 'SE'
+                console.log("Student Major loaded:", studentMajorId);
+            }
+        } catch (error) {
+            console.error("Failed to load student profile:", error);
+        }
+    }
+
+    // --- 4. LOAD DATA ---
     async function loadStudentEnrollments() {
         const enrolledList = document.getElementById('enrolled-list');
         const completedList = document.getElementById('completed-list');
-        
         try {
             allStudentEnrollments = await apiFetch(`/api/student/${currentState.studentId}/enrollments`);
-
             if (!allStudentEnrollments) allStudentEnrollments = [];
 
-            const enrolledCourses = allStudentEnrollments.filter(c => c.status === 'Enrolled');
-            const completedCourses = allStudentEnrollments.filter(c => c.status === 'Completed');
+            const enrolledModules = allStudentEnrollments.filter(c => c.status === 'Enrolled');
+            const completedModules = allStudentEnrollments.filter(c => c.status === 'Completed');
 
-            // Metrics
-            const enrolledMetric = document.getElementById('metric-enrolled-count');
-            const completedMetric = document.getElementById('metric-completed-count');
-            if (enrolledMetric) enrolledMetric.textContent = enrolledCourses.length;
-            if (completedMetric) completedMetric.textContent = completedCourses.length;
+            const em = document.getElementById('metric-enrolled-count');
+            const cm = document.getElementById('metric-completed-count');
+            if(em) em.textContent = enrolledModules.length;
+            if(cm) cm.textContent = completedModules.length;
 
-            // Render Enrolled
-            if (enrolledCourses.length === 0) {
-                enrolledList.innerHTML = '<p class="text-gray-500 mx-3">You have no current enrollments.</p>';
-            } else {
-                enrolledList.innerHTML = enrolledCourses.map(course => `
-                <div class="p-3 border border-yellow-200 bg-yellow-50 rounded-md flex items-center justify-between gap-3 shadow-sm">
-                    <div>
-                        <strong class="text-blue-800 block">
-                            ${course.course_id} - ${course.course_name || course.title}
-                        </strong>
-                        <span class="text-sm text-gray-600 block">
-                            Taught by: ${course.instructor_name} (${course.credits} Credits)
-                        </span>
-                        <span class="text-xs font-semibold text-gray-700 bg-gray-200 px-2 py-1 rounded-full mt-1 inline-block">
-                            ${course.academic_term}
-                        </span>
-                    </div>
-                    <button
-                        class="inline-flex items-center px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold border border-red-200 hover:bg-red-200 hover:text-red-800 transition"
-                        onclick="handleDropEnrollment('${course.course_id}')">
-                        Drop
-                    </button>
-                </div>
-                `).join('');
-            }
-
-            // Render Completed
-            if (completedCourses.length === 0) {
-                completedList.innerHTML = '<p class="text-gray-500 mx-3">You have no completed courses yet.</p>';
-            } else {
-                completedList.innerHTML = completedCourses.map(course => `
-                <div class="p-3 border border-green-200 bg-green-50 rounded-md flex items-center justify-between gap-3 shadow-sm">
-                    <div>
-                        <strong class="text-green-800 block">
-                            ${course.course_id} - ${course.course_name || course.title}
-                        </strong>
-                        <span class="text-sm text-gray-600 block">
-                            Taught by: ${course.instructor_name} (${course.credits} Credits)
-                        </span>
-                        <span class="text-xs font-semibold text-gray-700 bg-gray-200 px-2 py-1 rounded-full mt-1 inline-block">
-                            ${course.academic_term}
-                        </span>
-                    </div>
-                    <div class="text-right">
-                        <span class="text-xs text-gray-500 block mb-1">Grade</span>
-                        <span class="inline-block px-3 py-1 rounded-full bg-green-200 font-bold text-green-800 text-sm">
-                            ${course.final_grade ?? 'N/A'}
-                        </span>
-                    </div>
-                </div>
-                `).join('');
-            }
-
-        } catch (error) {
-            console.error("Failed to load enrollments:", error);
-            enrolledList.innerHTML = '<p class="text-red-500 mx-3">Error loading enrollments.</p>';
-        }
+            const renderList = (items, listEl, emptyMsg, isEnrolled) => {
+                if (items.length === 0) {
+                    listEl.innerHTML = `<p class="text-gray-500 mx-3">${emptyMsg}</p>`;
+                } else {
+                    listEl.innerHTML = items.map(module => `
+                    <div class="p-3 border ${isEnrolled ? 'border-yellow-200 bg-yellow-50' : 'border-green-200 bg-green-50'} rounded-md flex items-center justify-between gap-3 shadow-sm">
+                        <div>
+                            <strong class="${isEnrolled ? 'text-blue-800' : 'text-green-800'} block">
+                                ${module.module_id} - ${module.module_name || module.title}
+                            </strong>
+                            <span class="text-sm text-gray-600 block">
+                                Taught by: ${module.instructor_name} (${module.credits} Credits)
+                            </span>
+                            <span class="text-xs font-semibold text-gray-700 bg-gray-200 px-2 py-1 rounded-full mt-1 inline-block">
+                                ${module.academic_term}
+                            </span>
+                        </div>
+                        ${isEnrolled ? `
+                        <button class="inline-flex items-center px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold border border-red-200 hover:bg-red-200 hover:text-red-800 transition"
+                            onclick="handleDropEnrollment('${module.module_id}')">Drop</button>
+                        ` : `
+                        <div class="text-right">
+                            <span class="text-xs text-gray-500 block mb-1">Grade</span>
+                            <span class="inline-block px-3 py-1 rounded-full bg-green-200 font-bold text-green-800 text-sm">${module.final_grade ?? 'N/A'}</span>
+                        </div>
+                        `}
+                    </div>`).join('');
+                }
+            };
+            renderList(enrolledModules, enrolledList, "You have no current enrollments.", true);
+            renderList(completedModules, completedList, "You have no completed modules yet.", false);
+        } catch (error) { console.error("Error loading enrollments:", error); }
     }
 
-    // --- 5. ENROLL / DROP ACTIONS ---
-    async function handleEnroll(courseId, courseTitle) {
+    // --- 5. ACTIONS ---
+    async function handleEnroll(moduleId) {
         try {
             const data = await apiFetch('/api/enroll', {
                 method: 'POST',
-                body: { 
-                    student_id: currentState.studentId,
-                    course_id: courseId 
-                }
+                body: { student_id: currentState.studentId, module_id: moduleId }
             });
-
             if (data && data.message) {
                 showEnrollPopup(data.message, 'success');
-                await loadStudentEnrollments();
-                await handleShowAllCourses(); // Refresh available list to update buttons
+                loadStudentEnrollments();
+                handleShowAllModules();
+                console.log(data);
             }
-        } catch (error) {
-            showEnrollPopup(error.message || 'Enrollment failed.', 'error');
-        }
+        } catch (error) { showEnrollPopup(error.message, 'error'); }
     }
 
-    async function handleDropEnrollment(courseId) {
-        if (!confirm(`Are you sure you want to drop course ${courseId}?`)) return;
-
+    async function handleDropEnrollment(moduleId) {
+        if (!confirm(`Drop module ${moduleId}?`)) return;
         try {
             const data = await apiFetch('/api/enroll/drop', {
                 method: 'POST',
-                body: { 
-                    student_id: currentState.studentId,
-                    course_id: courseId
-                }
+                body: { student_id: currentState.studentId, module_id: moduleId }
             });
-
             if (data && data.message) {
                 showEnrollPopup(data.message, 'success');
-                await loadStudentEnrollments();
-                await handleShowAllCourses(); // Refresh available list
+                loadStudentEnrollments();
+                handleShowAllModules();
             }
-        } catch (error) {
-            showEnrollPopup(error.message || 'Failed to drop course.', 'error');
-        }
+        } catch (error) { showEnrollPopup(error.message, 'error'); }
     }
 
-    // --- 6. SEARCH & DISPLAY LOGIC ---
-    async function handleShowAllCourses() {
+    async function handleShowAllModules() {
         try {
-            const results = await apiFetch('/api/courses');
-            if (results) {
-                displayCourseResults(results);
-            }
-        } catch (error) {
-            console.error("Failed to show all courses:", error);
-        }
+            // We append the major query here too if we want the default list to be filtered
+            let endpoint = '/api/modules';
+            // NOTE: Your current /api/modules endpoint retrieves EVERYTHING from SQL.
+            // If you want the default view filtered, you'd need to update that API endpoint too.
+            // For now, we will rely on search to filter.
+            
+            const results = await apiFetch(endpoint);
+            if (results) displayModuleResults(results);
+        } catch (e) { console.error(e); }
     }
 
-    async function handleCourseSearch(event) {
+    // --- 6. SMART SEARCH LOGIC (DYNAMIC MAJOR) ---
+    async function handleModuleSearch(event) {
         event.preventDefault();
         const query = document.getElementById('search-query').value.toLowerCase();
 
-        // 1. Check for LOCAL context
-        const localKeywords = ['my', 'enrolled', 'completed', 'my schedule'];
-        const isLocalSearch = localKeywords.some(kw => query.includes(kw));
-
-        if (isLocalSearch) {
-            // LOCAL (SQL) SEARCH
-            let localQuery = query.replace(/my|courses|in|enrolled|completed|schedule|of/g, '').trim();
-            // Map common terms
-            localQuery = localQuery
-                .replace(/year (\d)/g, 'y$1')
-                .replace(/trimester (\d)/g, 't$1')
-                .replace(/tri (\d)/g, 't$1')
-                .replace(/\s/g, ''); // Remove spaces -> 'y1t1'
-
-            const results = allStudentEnrollments.filter(course => {
-                const searchCorpus = `${course.course_name.toLowerCase()} ${course.course_id.toLowerCase()} ${course.academic_term.toLowerCase()}`;
-                return searchCorpus.includes(localQuery);
+        // 1. LOCAL Search
+        const localKeywords = ['my', 'enrolled', 'completed', 'schedule'];
+        if (localKeywords.some(kw => query.includes(kw))) {
+            let localQuery = query.replace(/my|modules|in|enrolled|completed|schedule|of/g, '').trim();
+            localQuery = localQuery.replace(/\s/g, ''); 
+            const results = allStudentEnrollments.filter(c => {
+                const corpus = `${c.module_name.toLowerCase()} ${c.module_id.toLowerCase()} ${c.academic_term.toLowerCase()}`;
+                return corpus.includes(localQuery);
             });
-
-            displayCourseResults(results, true); // true = local search
-        } else {
-            // GLOBAL (NoSQL) SEARCH
-            let semanticQuery = query;
-            let params = new URLSearchParams();
-
-            // Filter 1: Level
-            const levelMap = {
-                'first year': 1000, 'year 1': 1000, 'y1': 1000, '1000 level': 1000,
-                'second year': 2000, 'year 2': 2000, 'y2': 2000, '2000 level': 2000,
-                'third year': 3000, 'year 3': 3000, 'y3': 3000, '3000 level': 3000,
-            };
-            for (const [key, value] of Object.entries(levelMap)) {
-                if (query.includes(key)) {
-                    params.set('level', value);
-                    semanticQuery = semanticQuery.replace(key, '');
-                    break;
-                }
-            }
-
-            // Filter 2: Term
-            const termMap = {
-                'trimester 1': 'Fall 2025', 'tri 1': 'Fall 2025', 't1': 'Fall 2025', 'fall': 'Fall 2025',
-                'trimester 2': 'Spring 2026', 'tri 2': 'Spring 2026', 't2': 'Spring 2026', 'spring': 'Spring 2026',
-            };
-            for (const [key, value] of Object.entries(termMap)) {
-                if (query.includes(key)) {
-                    params.set('term', value);
-                    semanticQuery = semanticQuery.replace(key, '');
-                    break;
-                }
-            }
-
-            semanticQuery = semanticQuery.replace(/courses|course|in|by|for|of/g, '').trim();
-
-            if (!query.trim() || !semanticQuery.trim()) {
-                handleShowAllCourses();
-                return;
-            }
-
-            params.set('q', semanticQuery);
-
-            try {
-                const results = await apiFetch(`/api/search?${params.toString()}`);
-                if (results) {
-                    displayCourseResults(results, false);
-                }
-            } catch (error) {
-                console.error("Search failed:", error);
-                showEnrollPopup(`Search failed: ${error.message}`, 'error');
-            }
-        }
-        
-        // Scroll to results
-        const scrollToView = document.getElementById('scroll-to-view');
-        if(scrollToView) scrollToView.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-    function displayCourseResults(courses, isLocalSearch = false) {
-        const resultsList = document.getElementById('course-results-list');
-        if (!resultsList) return;
-
-        if (courses.length === 0) {
-            resultsList.innerHTML = `<p class="text-center text-red-500 p-6">No courses matched your query.</p>`;
-            // Add "Show All" button even when empty
-            resultsList.innerHTML += `<button class="btn-secondary w-full mt-4 py-2" onclick="handleShowAllCourses()">Show All Courses</button>`;
+            displayModuleResults(results, true);
             return;
         }
 
-        // Create enrollment map for lookup
+        // 2. GLOBAL Search
+        let semanticQuery = query;
+        let params = new URLSearchParams();
+
+        // --- DYNAMIC MAJOR FILTER ---
+        if (studentMajorId) {
+            params.set('major', studentMajorId); // Uses the value loaded from DB (e.g. 'SE')
+        }
+        // ----------------------------
+
+        let targetYear = null;
+        let targetTri = null;
+
+        if (query.match(/y(ear)?\s?1/) || query.includes('first year') || query.includes('1000')) targetYear = 1;
+        else if (query.match(/y(ear)?\s?2/) || query.includes('second year') || query.includes('2000')) targetYear = 2;
+        else if (query.match(/y(ear)?\s?3/) || query.includes('third year') || query.includes('3000')) targetYear = 3;
+        else if (query.match(/y(ear)?\s?4/) || query.includes('fourth year') || query.includes('4000')) targetYear = 4;
+
+        if (query.match(/t(ri)?\s?1/) || query.includes('fall') || query.includes('sep')) targetTri = 1;
+        else if (query.match(/t(ri)?\s?2/) || query.includes('spring') || query.includes('jan')) targetTri = 2;
+        else if (query.match(/t(ri)?\s?3/) || query.includes('summer') || query.includes('may')) targetTri = 3;
+
+        if (targetYear && targetTri) {
+            const termCode = `Y${targetYear}T${targetTri}`;
+            params.set('term', termCode);
+            semanticQuery = semanticQuery.replace(/y(ear)?\s?\d/g, '').replace(/t(ri)?\s?\d/g, '').replace(/fall|spring|summer/g, '');
+        } else if (targetYear) {
+            params.set('level', targetYear * 1000);
+            semanticQuery = semanticQuery.replace(/y(ear)?\s?\d/g, '');
+        }
+
+        semanticQuery = semanticQuery.replace(/modules|module|in|by|for|of|classes/g, '').trim();
+        params.set('q', semanticQuery || 'all'); 
+
+        try {
+            const results = await apiFetch(`/api/search?${params.toString()}`);
+            if (results) displayModuleResults(results, false);
+        } catch (e) {
+            showEnrollPopup(`Search failed: ${e.message}`, 'error');
+        }
+        
+        const el = document.getElementById('scroll-to-view');
+        if(el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function displayModuleResults(modules, isLocalSearch = false) {
+        const resultsList = document.getElementById('module-results-list');
+        if (!resultsList) return;
+
+        if (modules.length === 0) {
+            resultsList.innerHTML = `<p class="text-center text-red-500 p-6">No modules matched your query.</p>`;
+            resultsList.innerHTML += `<button class="btn-secondary w-full mt-4 py-2" onclick="handleShowAllCourses()">Show All Modules</button>`;
+            return;
+        }
+
         const enrollmentStatusById = {};
-        allStudentEnrollments.forEach(c => {
-            if (c.course_id) enrollmentStatusById[c.course_id] = c.status;
+        allStudentEnrollments.forEach(c => { if(c.module_id) enrollmentStatusById[c.module_id] = c.status; });
+
+        const sortedModules = [...modules].sort((a, b) => {
+            const aEnrolled = !!enrollmentStatusById[a.module_id];
+            const bEnrolled = !!enrollmentStatusById[b.module_id];
+            return (aEnrolled === bEnrolled) ? 0 : (aEnrolled ? 1 : -1);
         });
 
-        // Sort: Available first
-        const sortedCourses = [...courses].sort((a, b) => {
-            const aEnrolled = !!enrollmentStatusById[a.course_id];
-            const bEnrolled = !!enrollmentStatusById[b.course_id];
-            if (aEnrolled === bEnrolled) return 0;
-            return aEnrolled ? 1 : -1;
-        });
+        resultsList.innerHTML = sortedModules.map(module => {
+            const moduleId = module.module_id;
+            const moduleCode = module.module_code || moduleId;
+            const moduleName = module.module_name || module.title;
+            const description = module.description || 'No description available.';
+            const prereqs = module.prerequisites || 'N/A';
+            const instructor = module.instructor_name || 'N/A';
+            const slotsLeft = module.slots_left ?? 'N/A';
+            const maxCap = module.max_capacity || 'N/A';
 
-        const listContent = sortedCourses.map(course => {
-            const courseId = course.course_id;
-            const courseCode = course.course_id || courseId;
-            const courseName = course.course_name || course.title;
-            const description = course.description || 'No description available.';
-            const prereqs = course.prerequisites || 'N/A';
-            const instructor = course.instructor_name || 'N/A';
-            const slotsLeft = course.slots_left ?? 'N/A';
-            const maxCap = course.max_capacity || 'N/A';
-
-            const status = enrollmentStatusById[courseId];
+            const status = enrollmentStatusById[moduleId];
             const isAlreadyEnrolled = !!status;
 
-            // Button Logic
-            let buttonHtml = '';
+            let btn = '';
             if (isLocalSearch) {
-                const localStatus = course.status || 'Completed';
+                const localStatus = module.status || 'Completed';
                 const colorClass = (localStatus === 'Enrolled') ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700';
-                buttonHtml = `<button class="btn-secondary ${colorClass} cursor-not-allowed" disabled>${localStatus}</button>`;
+                btn = `<button class="btn-secondary ${colorClass} cursor-not-allowed" disabled>${localStatus}</button>`;
             } else {
                 if (isAlreadyEnrolled) {
-                    buttonHtml = `<button class="btn-secondary bg-gray-200 text-gray-500 cursor-not-allowed" disabled>${status}</button>`;
+                    btn = `<button class="btn-secondary bg-gray-200 text-gray-500 cursor-not-allowed" disabled>${status}</button>`;
                 } else {
                     const isFull = slotsLeft === 0;
-                    buttonHtml = isFull 
+                    btn = isFull 
                         ? `<button class="btn-secondary bg-red-100 text-red-700 cursor-not-allowed" disabled>Full</button>`
-                        : `<button class="btn-primary p-3" onclick="handleEnroll('${courseId}', '${courseName}')">Apply</button>`;
+                        : `<button class="btn-primary p-3" onclick="handleEnroll('${moduleId}')">Apply</button>`;
                 }
             }
 
@@ -410,25 +352,25 @@
             return `
                 <div class="course-item flex justify-between items-center flex-wrap p-4 hover:bg-gray-50 transition ${rowOpacity}">
                     <div class="flex-grow min-w-0 pr-4">
-                        <h4 class="text-lg font-bold text-blue-800">${courseName} (${courseCode})</h4>
+                        <h4 class="text-lg font-bold text-blue-800">${moduleName} (${moduleCode})</h4>
                         <p class="text-sm text-gray-700 mt-1">${description}</p>
-                        <p class="text-xs text-gray-500 mt-1">Prereqs: ${prereqs}</p>
+                        <div class="flex gap-2 mt-2">
+                            <span class="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded">${module.academic_term}</span>
+                            <span class="text-xs text-gray-500 px-2 py-1">Prereqs: ${prereqs}</span>
+                        </div>
                     </div>
                     <div class="text-right space-y-1 mt-2 sm:mt-0 min-w-[140px]">
                         <p class="text-sm font-semibold text-gray-800">Taught by: ${instructor}</p>
                         <p class="text-sm ${slotsLeft === 0 ? 'text-red-600 font-bold' : 'text-green-600'}">
                             ${slotsLeft} / ${maxCap} Slots
                         </p>
-                        <div class="mt-2">
-                            ${buttonHtml}
-                        </div>
+                        <div class="mt-2">${btn}</div>
                     </div>
                 </div>
             `;
         }).join('');
 
-        resultsList.innerHTML = listContent;
-        resultsList.innerHTML += `<button class="btn-secondary w-full mt-4 py-2" onclick="handleShowAllCourses()">Show All Courses</button>`;
+        resultsList.innerHTML += `<button class="btn-secondary w-full mt-4 py-2" onclick="handleShowAllCourses()">Show All Modules</button>`;
     }
 </script>
 {% endblock %}

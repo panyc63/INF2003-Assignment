@@ -17,18 +17,18 @@ def about():
     """Renders the About Us page."""
     return render_template('about.html', view='about')
 
-@views_bp.route('/courses')
-def courses():
-    """Renders the public Course Catalog page."""
-    return render_template('course.html', view='courses')
+@views_bp.route('/modules')
+def modules():
+    """Renders the public Module Catalog page."""
+    return render_template('module.html', view='modules')
 
-@views_bp.route('/course/<string:course_id>')
-def course_detail(course_id):
+@views_bp.route('/module/<string:module_id>')
+def module_detail(module_id):
     """
-    Renders the specific Course Details page.
-    We pass course_id to the template so the JS can query the API.
+    Renders the specific Module Details page.
+    We pass module_id to the template so the JS can query the API.
     """
-    return render_template('course_detail.html', course_id=course_id, view='course_detail')
+    return render_template('module_detail.html', module_id=module_id, view='module_detail')
 
 # =========================================================
 # AUTHENTICATION
@@ -67,10 +67,10 @@ def admin_dashboard():
     """Renders the main Admin Dashboard."""
     return render_template('admin_dashboard.html', view='admin_dashboard')
 
-@views_bp.route('/admin/courses')
-def admin_courses():
-    """Renders the Admin Course Management page."""
-    return render_template('admin_courses.html', view='admin_courses')
+@views_bp.route('/admin/modules')
+def admin_modules():
+    """Renders the Admin Module Management page."""
+    return render_template('admin_modules.html', view='admin_modules')
 
 @views_bp.route('/admin/users')
 def admin_users():

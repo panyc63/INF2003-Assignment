@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}UCMS - University Course Management System{% endblock %}</title>
+    <title>{% block title %}UCMS - University Module Management System{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet"> 
 
@@ -18,7 +18,7 @@
         .btn-primary { @apply px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-150; }
         .btn-secondary { @apply px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition duration-150; }
         .nav-link { @apply text-gray-700 hover:text-blue-600 font-medium cursor-pointer transition duration-150; }
-        .course-item { @apply border-b border-gray-100 p-4 hover:bg-blue-50 transition duration-150; }
+        .module-item { @apply border-b border-gray-100 p-4 hover:bg-blue-50 transition duration-150; }
         /* Global State and Message holder for the whole app */
         #status-message-container { min-height: 50px; }
     </style>
@@ -60,22 +60,22 @@
             let navHtml = `
                 <a href="/" class="nav-link">Home</a>
                 <a href="/about" class="nav-link">About Us</a>
-                <a href="/courses" class="nav-link">Courses</a>
+                <a href="/modules" class="nav-link">Modules</a>
             `;
             if (currentState.loggedIn) {
                 // Role-Specific Links
                 if (currentState.userRole === 'student') {
                     navHtml = `<a href="/about" class="nav-link">About</a>`;
-                    navHtml += `<a href="/courses" class="nav-link">Courses</a>`;
+                    navHtml += `<a href="/modules" class="nav-link">Modules</a>`;
                     navHtml += `<a href="/dashboard" class="nav-link">Dashboard</a>`;
                 } else if (currentState.userRole === 'instructor') {
                     navHtml = `<a href="/" class="nav-link">Home</a>`;
                     navHtml += `<a href="/about" class="nav-link">About</a>`;
-                    navHtml += `<a href="/courses" class="nav-link">Courses</a>`;
+                    navHtml += `<a href="/modules" class="nav-link">Modules</a>`;
                     navHtml += `<a href="/instructor_dashboard" class="nav-link">Dashboard</a>`;
                 } else if (currentState.userRole === 'admin') {
                     navHtml = `<a href="/admin_dashboard" class="nav-link" style="color: #4f46e5;">Admin</a>`;
-                    navHtml += `<a href="/admin/courses" class="nav-link">Manage Courses</a>`;
+                    navHtml += `<a href="/admin/modules" class="nav-link">Manage Modules</a>`;
                     navHtml += `<a href="/admin/users" class="nav-link">Manage Users</a>`;
                 }
 
@@ -181,9 +181,56 @@
             throw error;
         }
     }
+
+    // --- DB Switcher Logic ---
+    async function toggleDatabase(checkbox) {
+        const isMongo = checkbox.checked;
+        const provider = isMongo ? 'mongodb' : 'sql';
         
+        // Visual loading state (optional, but good for UX)
+        const label = document.getElementById('db-label-text');
+        if(label) label.textContent = "Switching...";
+
+        try {
+            const result = await apiFetch('/api/switch-db', {
+                method: 'POST',
+                body: { provider: provider }
+            });
+
+            showStatusMessage(result.message, 'success');
+            // Save preference locally
+            localStorage.setItem('db_provider', provider);
+            
+            // Reload page after a brief moment to ensure data refreshes from new DB
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+
+        } catch (error) {
+            console.error(error);
+            showStatusMessage("Failed to switch database. See console.", 'error');
+            // Revert toggle visual state
+            checkbox.checked = !isMongo;
+        } finally {
+            if(label) label.textContent = provider === 'mongodb' ? 'NoSQL' : 'SQL';
+        }
+    }
+
     // Run the update only after the DOM is loaded
-    document.addEventListener('DOMContentLoaded', updateNavAndState);
+    document.addEventListener('DOMContentLoaded', () => {
+        updateNavAndState();
+        
+        // Initialize Toggle State based on localStorage
+        const dbToggle = document.getElementById('db-toggle-switch');
+        if (dbToggle) {
+            const savedProvider = localStorage.getItem('db_provider');
+            if (savedProvider === 'mongodb') {
+                dbToggle.checked = true;
+            } else {
+                dbToggle.checked = false;
+            }
+        }
+    });
     </script>
     
     {% block head_extras %}{% endblock %}
@@ -193,11 +240,23 @@
     <header class="bg-white shadow-md sticky top-0 z-10">
         <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             <h1 class="text-2xl font-bold text-blue-800"><a href="/">UCMS</a></h1>
-            <div class="flex space-x-6" id="navbar-links">
-                <a href="/" class="nav-link">Home</a>
-                <a href="/about" class="nav-link">About Us</a>
-                <a href="/courses" class="nav-link">Courses</a>
-                <a href="/login" class="nav-link">Login</a>
+            
+            <div class="flex items-center">
+                <div class="flex space-x-6 mr-6" id="navbar-links">
+                    <a href="/" class="nav-link">Home</a>
+                    <a href="/about" class="nav-link">About Us</a>
+                    <a href="/modules" class="nav-link">Modules</a>
+                    <a href="/login" class="nav-link">Login</a>
+                </div>
+
+                <div class="flex items-center border-l pl-6 border-gray-300" title="Switch Database Backend">
+                    <span class="mr-2 text-xs font-bold text-gray-500">SQL</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="db-toggle-switch" class="sr-only peer" onchange="toggleDatabase(this)">
+                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-600"></div>
+                    </label>
+                    <span class="ml-2 text-xs font-bold text-green-600">MongoDB</span>
+                </div>
             </div>
         </nav>
     </header>
@@ -208,7 +267,7 @@
     
     <footer class="bg-gray-100 mt-auto">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-gray-500 text-sm">
-            &copy; 2025 University Course Management System. All rights reserved.
+            &copy; 2025 University Module Management System. All rights reserved.
         </div>
     </footer>
     <script src="https://cdn.tailwindcss.com"></script>

@@ -2,92 +2,105 @@
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from website import create_app
-from website.models import Course, User, Instructor  # <-- Import User and Instructor
+from website.models import Module, User, Instructor  
 from website import db as sql_db   
 from website import mongo
-from sqlalchemy.orm import aliased # <-- Import aliased
+from sqlalchemy.orm import aliased 
+import re # Needed for the regex match
 
 def generate_and_store_embeddings():
     """
-    Fetches courses WITH INSTRUCTOR NAMES from MySQL, generates embeddings,
+    Fetches modules WITH INSTRUCTOR NAMES from MySQL, generates embeddings,
     and stores them in MongoDB.
     """
+    print("--- STEP 1: Starting Script ---") 
 
+    # 1. Load the pre-trained NLP model
+    print("--- STEP 2: Loading NLP Model (This takes time on first run)...")
     model = SentenceTransformer('all-MiniLM-L6-v2')
-    print("Loaded NLP model.")
+    print("--- STEP 2: DONE. Model Loaded. ---")
 
+    # 2. Connect to databases
     app = create_app()
     with app.app_context():
-        print("Connecting to databases...")
+        print("--- STEP 3: Connecting to SQL Database... ---")
 
         # --- 1. MODIFIED SQL QUERY ---
-        # We create an "alias" for the User table to join it correctly
         InstructorUser = aliased(User)
         
-        # This query now JOINS Course -> Instructor -> User
-        sql_courses = sql_db.session.query(
-            Course.course_id,
-            Course.course_code,
-            Course.course_name,
-            Course.description,
-            Course.academic_term,
-            InstructorUser.first_name, # <-- Get instructor's first name
-            InstructorUser.last_name   # <-- Get instructor's last name
-        ).outerjoin(Course.instructor)\
+        sql_modules = sql_db.session.query(
+            Module.module_id,
+            Module.module_name,
+            Module.description,
+            Module.academic_term,
+            Module.target_majors, 
+            InstructorUser.first_name, 
+            InstructorUser.last_name   
+        ).outerjoin(Module.instructor)\
          .outerjoin(Instructor.user.of_type(InstructorUser))\
          .all()
         # -----------------------------
 
-        if not sql_courses:
-            print("No courses found in SQL database.")
+        if not sql_modules:
+            print("Error: No modules found in SQL database.")
             return
 
-        print(f"Found {len(sql_courses)} courses in SQL. Generating embeddings...")
+        print(f"--- STEP 3: DONE. Found {len(sql_modules)} modules in SQL. ---")
+        print("--- STEP 4: Connecting to MongoDB... (If it hangs here, check IP Whitelist) ---")
 
-        mongo_collection = mongo.db.courses
-        mongo_collection.delete_many({})
+        mongo_collection = mongo.db.modules  # <-- Collection renamed to 'modules'
+        mongo_collection.delete_many({}) 
 
-        mongo_courses = []
-        for course in sql_courses:
-            if not course.description:
-                print(f"Skipping {course.course_name} (no description).")
+        print("--- STEP 4: DONE. Connected to Mongo. Generating vectors... ---")
+
+        mongo_docs = []
+        for module in sql_modules:
+            if not module.description:
+                print(f"Skipping {module.module_name} (no description).")
                 continue
 
             # --- 2. ENRICH THE DATA ---
-            # Create the full instructor name
-            instructor_name = f"{course.first_name} {course.last_name}" if course.first_name else "TBA"
+            instructor_name = f"{module.first_name} {module.last_name}" if module.first_name else "TBA"
             
-            # THIS IS THE MOST IMPORTANT CHANGE:
-            # We add "Taught by..." to the text that will be vectorized.
-            text_to_embed = f"{course.course_name}: {course.description}. Taught by {instructor_name}."
-            # --------------------------
+            text_to_embed = f"{module.module_name}: {module.description}. Taught by {instructor_name}."
             
             embedding = model.encode(text_to_embed).tolist()
 
-            course_level = 1000
-            if course.course_code and course.course_code[3].isdigit():
-                course_level = int(course.course_code[3]) * 1000
+            # Extract Level (e.g., INF1002 -> 1000)
+            module_level = 1000 # Default
+            match = re.search(r'\d', module.module_id)
+            if match:
+                first_digit = int(match.group()) 
+                module_level = first_digit * 1000
 
-            # --- 3. ENRICH THE MONGO DOCUMENT ---
+            # Convert "SE,CS" string to ["SE", "CS"] List
+            majors_list = []
+            if module.target_majors:
+                # Split string by comma, strip spaces
+                majors_list = [m.strip() for m in module.target_majors.split(',') if m.strip()]
+            else:
+                majors_list = ["All"]
+
+            # --- 3. CREATE MONGO DOCUMENT ---
             mongo_doc = {
-                "course_id": course.course_id,
-                "course_name": course.course_name,
-                "description": course.description,
+                "module_id": module.module_id,
+                "module_name": module.module_name,
+                "description": module.description,
                 "embedding": embedding,
-                "academic_term": course.academic_term,
-                "course_level": course_level,
-                "instructor_name": instructor_name # <-- Add name for filtering
+                "academic_term": module.academic_term,
+                "module_level": module_level,
+                "instructor_name": instructor_name,
+                "target_majors": majors_list 
             }
-            mongo_courses.append(mongo_doc)
-            # ----------------------------------
+            mongo_docs.append(mongo_doc)
 
-        if mongo_courses:
-            print(f"Inserting {len(mongo_courses)} documents into MongoDB...")
-            mongo_collection.insert_many(mongo_courses)
+        if mongo_docs:
+            print(f"Inserting {len(mongo_docs)} documents into MongoDB...")
+            mongo_collection.insert_many(mongo_docs)
             print("\n--- Success! ---")
-            print("Your MongoDB 'courses' collection is now enriched with instructor names.")
+            print("Your MongoDB 'modules' collection is now populated.")
         else:
-            print("No courses were inserted into MongoDB.")
+            print("No modules were inserted into MongoDB.")
 
 if __name__ == '__main__':
     generate_and_store_embeddings()

@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 
-{% block title %}{{ course.course_id }} - {{ course.course_name }}{% endblock %}
+{% block title %}{{ module.module_id }} - {{ module.module_name }}{% endblock %}
 
 {% block content %}
     <div class="jumbotron jumbotron-fluid page-header position-relative overlay-bottom" style="margin-bottom: 90px;">
         <div class="container text-center py-5">
-            <h1 class="text-white display-1">{{ course.course_id }}</h1>
+            <h1 class="text-white display-1">{{ module.module_id }}</h1>
             <div class="d-inline-flex text-white mb-5">
                 <p class="m-0 text-uppercase"><a class="text-white" href="{{ url_for('views.home') }}">Home</a></p>
                 <i class="fa fa-angle-double-right pt-1 px-3"></i>
-                <p class="m-0 text-uppercase"><a class="text-white" href="{{ url_for('views.course') }}">Course</a></p>
+                <p class="m-0 text-uppercase"><a class="text-white" href="{{ url_for('views.modules') }}">Module</a></p>
                 <i class="fa fa-angle-double-right pt-1 px-3"></i>
-                <p class="m-0 text-uppercase">{{ course.course_id }}</p>
+                <p class="m-0 text-uppercase">{{ module.module_id }}</p>
             </div>
         </div>
     </div>
@@ -20,30 +20,30 @@
         <div class="container py-5">
             <div class="row">
                 <div class="col-lg-8">
-                    <h2 class="display-4 mb-4">{{ course.course_name }}</h2>
-                    <p class="lead text-secondary">{{ course.description }}</p>
+                    <h2 class="display-4 mb-4">{{ module.module_name }}</h2>
+                    <p class="lead text-secondary">{{ module.description }}</p>
 
-                    <h4 class="mt-5 mb-3">Course Details</h4>
+                    <h4 class="mt-5 mb-3">Module Details</h4>
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            Course Code:
-                            <span class="badge badge-primary badge-pill">{{ course.course_id }}</span>
+                            Module Code:
+                            <span class="badge badge-primary badge-pill">{{ module.module_id }}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             Academic Term:
-                            <span class="badge badge-secondary badge-pill">{{ course.academic_term }}</span>
+                            <span class="badge badge-secondary badge-pill">{{ module.academic_term }}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             Credits:
-                            <span class="badge badge-info badge-pill">{{ course.credits }}</span>
+                            <span class="badge badge-info badge-pill">{{ module.credits }}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             Max Capacity:
-                            <span class="badge badge-warning badge-pill">{{ course.max_capacity }} Students</span>
+                            <span class="badge badge-warning badge-pill">{{ module.max_capacity }} Students</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             Instructor:
-                            <span class="badge badge-success badge-pill">{{ course.instructor_name }}</span>
+                            <span class="badge badge-success badge-pill">{{ module.instructor_name }}</span>
                         </li>
                     </ul>
                     
@@ -51,7 +51,7 @@
                 </div>
                 
                 <div class="col-lg-4 mt-5 mt-lg-0">
-                    <img class="img-fluid rounded" src="{{ url_for('static', filename='img/courses-1.jpg') }}" alt="Course Image">
+                    <img class="img-fluid rounded" src="{{ url_for('static', filename='img/modules-1.jpg') }}" alt="Module Image">
                 </div>
             </div>
         </div>

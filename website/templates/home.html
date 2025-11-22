@@ -11,7 +11,7 @@
             <div class="col-lg-7 mb-5 mb-lg-0">
                 <div class="section-title position-relative mb-4">
                     <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Why Choose Us?</h6>
-                    <h1 class="display-4">Best Courses for Your Future</h1>
+                    <h1 class="display-4">Best Modules for Your Future</h1>
                 </div>
                 <p class="mb-4 pb-2">Join a community of learners and master new skills with our expert-led courses. Flexible learning for a modern world.</p>
                 <div class="d-flex mb-3">
@@ -56,13 +56,13 @@
         <div class="row mx-0 justify-content-center">
             <div class="col-lg-8">
                 <div class="section-title text-center position-relative mb-5">
-                    <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Our Courses</h6>
+                    <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Our Modules</h6>
                     <h1 class="display-4">Checkout New Releases</h1>
                 </div>
             </div>
         </div>
         
-        <div id="courses-container" class="owl-carousel courses-carousel">
+        <div id="modules-container" class="owl-carousel modules-carousel">
             <div class="text-center p-5">
                  <div class="spinner-border text-primary" role="status">
                      <span class="sr-only">Loading...</span>
@@ -124,38 +124,38 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', loadHomeCourses);
+    document.addEventListener('DOMContentLoaded', loadHomeModules);
 
-    async function loadHomeCourses() {
-        const container = document.getElementById('courses-container');
+    async function loadHomeModules() {
+            const container = document.getElementById('modules-container');
         
         try {
             // Fetch data from API
-            const courses = await apiFetch('/api/courses');
+            const modules = await apiFetch('/api/modules');
             
-            if (!courses || courses.length === 0) {
-                container.innerHTML = '<div class="text-center w-100">No courses available at the moment.</div>';
+            if (!modules || modules.length === 0) {
+                container.innerHTML = '<div class="text-center w-100">No modules available at the moment.</div>';
                 return;
             }
 
-            // Generate HTML for courses
+            // Generate HTML for modules
             // Limit to first 6 for the homepage carousel
-            const featuredCourses = courses.slice(0, 6);
+            const featuredModules = modules.slice(0, 6);
             
-            let htmlContent = featuredCourses.map((course, index) => {
+            let htmlContent = featuredModules.map((module, index) => {
                 const imgNum = (index % 6) + 1; // Cycle images 1-6
-                const detailUrl = `/course/${course.course_id}`;
+                const detailUrl = `/module/${module.module_id}`;
                 
                 return `
-                <div class="courses-list-item position-relative d-block overflow-hidden mb-2" style="margin-right: 10px;">
+                <div class="modules-list-item position-relative d-block overflow-hidden mb-2" style="margin-right: 10px;">
                     <a href="${detailUrl}">
-                        <img class="img-fluid" src="/static/img/courses-${imgNum}.jpg" alt="${course.course_name}">
-                        <div class="courses-text">
-                            <h4 class="text-center text-white px-3">${course.course_id} - ${course.course_name}</h4>
+                        <img class="img-fluid" src="/static/img/modules-${imgNum}.jpg" alt="${module.module_name}">
+                        <div class="modules-text">
+                            <h4 class="text-center text-white px-3">${module.module_id} - ${module.module_name}</h4>
                             <div class="border-top w-100 mt-3">
                                 <div class="d-flex justify-content-between p-4">
-                                    <span class="text-white"><i class="fa fa-user mr-2"></i>${course.instructor_name || 'TBA'}</span>
-                                    <span class="text-white"><i class="fa fa-book-open mr-2"></i>${course.credits} Credits</span>
+                                    <span class="text-white"><i class="fa fa-user mr-2"></i>${module.instructor_name || 'TBA'}</span>
+                                    <span class="text-white"><i class="fa fa-book-open mr-2"></i>${module.credits} Credits</span>
                                 </div>
                             </div>
                         </div>
@@ -193,8 +193,8 @@
             });
 
         } catch (error) {
-            console.error('Failed to load courses:', error);
-            container.innerHTML = '<div class="text-center text-danger w-100">Failed to load courses.</div>';
+            console.error('Failed to load modules:', error);
+            container.innerHTML = '<div class="text-center text-danger w-100">Failed to load modules.</div>';
         }
     }
 </script>

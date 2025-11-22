@@ -11,8 +11,8 @@
         </div>
 
         <div class="card">
-            <h3 class="text-2xl font-semibold mb-4 border-b pb-2">Your Courses (Fall 2025)</h3>
-            <div id="course-list-container" class="divide-y divide-gray-200 space-y-4">
+            <h3 class="text-2xl font-semibold mb-4 border-b pb-2">Your Modules (Fall 2025)</h3>
+            <div id="module-list-container" class="divide-y divide-gray-200 space-y-4">
                 <p class="text-center text-gray-500 p-6">Loading your teaching schedule...</p>
             </div>
         </div>
@@ -29,7 +29,7 @@
                 `Welcome back, ${currentState.userName}`;
             
             loadInstructorDetails();
-            loadInstructorCourses();
+            loadInstructorModules();
         });
 
         async function loadInstructorDetails() {
@@ -49,42 +49,42 @@
             }
         }
 
-        async function loadInstructorCourses() {
-            const container = document.getElementById('course-list-container');
-            if (!currentState.instructorId) {
-                 container.innerHTML = '<p class="text-red-500 p-6">Instructor ID is missing. Cannot load courses.</p>';
+        async function loadInstructorModules() {
+              const container = document.getElementById('module-list-container');
+              if (!currentState.instructorId) {
+                  container.innerHTML = '<p class="text-red-500 p-6">Instructor ID is missing. Cannot load modules.</p>';
                  return;
             }
 
-            const courses = await apiFetch(`/api/instructor/${currentState.instructorId}/courses`);
+            const modules = await apiFetch(`/api/instructor/${currentState.instructorId}/modules`);
 
-            if (!courses || courses.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 p-6">You are not scheduled to teach any courses this term.</p>';
+            if (!modules || modules.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 p-6">You are not scheduled to teach any modules this term.</p>';
                 return;
             }
 
-            container.innerHTML = courses.map(course => `
-                <div class="course-item card bg-blue-50 border border-blue-200" id="course-${course.course_id}">
+            container.innerHTML = modules.map(module => `
+                <div class="module-item card bg-blue-50 border border-blue-200" id="module-${module.module_id}">
                     <h4 class="text-xl font-bold text-blue-800 mb-2">
-                        ${course.course_id} - ${course.course_name} 
-                        <span class="text-sm font-normal text-gray-600">(${course.credits} Credits)</span>
+                        ${module.module_id} - ${module.module_name} 
+                        <span class="text-sm font-normal text-gray-600">(${module.credits} Credits)</span>
                     </h4>
-                    <p class="text-sm mb-3">${course.description}</p>
+                    <p class="text-sm mb-3">${module.description}</p>
                     <div class="flex justify-between items-center text-sm mb-3">
-                        <span class="font-medium text-gray-700">Enrollment: ${course.current_enrollment} / ${course.max_capacity}</span>
-                        <button class="btn-secondary text-sm" onclick="showEnrollments('${course.course_id}', '${course.course_name}')">
-                            View Students (${course.current_enrollment})
+                        <span class="font-medium text-gray-700">Enrollment: ${module.current_enrollment} / ${module.max_capacity}</span>
+                        <button class="btn-secondary text-sm" onclick="showEnrollments('${module.module_id}', '${module.module_name}')">
+                            View Students (${module.current_enrollment})
                         </button>
                     </div>
-                    <div id="enrollment-details-${course.course_id}" class="hidden mt-3 p-3 bg-white border rounded-lg">
+                    <div id="enrollment-details-${module.module_id}" class="hidden mt-3 p-3 bg-white border rounded-lg">
                         <p>Loading student list...</p>
                     </div>
                 </div>
             `).join('');
         }
 
-        async function showEnrollments(courseId, courseTitle) {
-            const detailsDiv = document.getElementById(`enrollment-details-${courseId}`);
+        async function showEnrollments(moduleId, moduleTitle) {
+            const detailsDiv = document.getElementById(`enrollment-details-${moduleId}`);
             const button = detailsDiv.previousElementSibling.querySelector('button');
             
             if (detailsDiv.classList.contains('hidden')) {
@@ -92,11 +92,11 @@
                 button.textContent = `Hide Students`;
                 detailsDiv.innerHTML = '<p class="text-center text-gray-500">Fetching student data...</p>';
 
-                // API endpoint to fetch students enrolled in this course (New endpoint needed in app.py)
-                const students = await apiFetch(`/api/course/${courseId}/students`);
+                // API endpoint to fetch students enrolled in this module (New endpoint needed in app.py)
+                const students = await apiFetch(`/api/module/${moduleId}/students`);
                 
                 if (!students || students.length === 0) {
-                    detailsDiv.innerHTML = `<p class="text-center text-gray-500">No students currently enrolled in ${courseTitle}.</p>`;
+                    detailsDiv.innerHTML = `<p class="text-center text-gray-500">No students currently enrolled in ${moduleTitle}.</p>`;
                     return;
                 }
 

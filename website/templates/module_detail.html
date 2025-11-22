@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 
-{% block title %}Course Details - Edukate{% endblock %}
+{% block title %}Module Details - Edukate{% endblock %}
 
 {% block content %}
 
-<div id="course-data" data-course-id="{{ course_id }}"></div>
+<div id="module-data" data-module-id="{{ module_id }}"></div>
 
 <div class="jumbotron jumbotron-fluid page-header position-relative overlay-bottom" style="margin-bottom: 90px;">
     <div class="container text-center py-5">
-        <h1 class="text-white display-1" id="course-header-code">Loading...</h1>
+        <h1 class="text-white display-1" id="module-header-code">Loading...</h1>
         <div class="d-inline-flex text-white mb-5">
             <p class="m-0 text-uppercase"><a class="text-white" href="{{ url_for('views.home') }}">Home</a></p>
             <i class="fa fa-angle-double-right pt-1 px-3"></i>
-            <p class="m-0 text-uppercase"><a class="text-white" href="{{ url_for('views.courses') }}">Courses</a></p>
+            <p class="m-0 text-uppercase"><a class="text-white" href="{{ url_for('views.modules') }}">Modules</a></p>
             <i class="fa fa-angle-double-right pt-1 px-3"></i>
             <p class="m-0 text-uppercase" id="breadcrumb-title">...</p>
         </div>
@@ -24,15 +24,15 @@
         <div class="row">
             <div class="col-lg-8">
                 <div class="mb-5">
-                    <img class="img-fluid rounded w-100 mb-4" id="course-image" src="{{ url_for('static', filename='img/courses-1.jpg') }}" alt="Course Image">
+                    <img class="img-fluid rounded w-100 mb-4" id="module-image" src="{{ url_for('static', filename='img/modules-1.jpg') }}" alt="Module Image">
                     
-                    <h1 class="mb-3" id="course-title">Loading...</h1>
+                    <h1 class="mb-3" id="module-title">Loading...</h1>
                     
-                    <h2 class="mb-4 h4">Course Description</h2>
-                    <p id="course-description">Please wait while we fetch the course information.</p>
+                    <h2 class="mb-4 h4">Module Description</h2>
+                    <p id="module-description">Please wait while we fetch the module information.</p>
                     
                     <h3 class="mb-3 mt-5">Prerequisites</h3>
-                    <p id="course-prereqs">...</p>
+                    <p id="module-prereqs">...</p>
                 </div>
             </div>
 
@@ -43,27 +43,27 @@
                     </div>
                     
                     <div class="card-body p-4">
-                        <h4 class="mb-3">Course Details</h4>
+                        <h4 class="mb-3">Module Details</h4>
                         <ul class="list-group list-group-flush">
                             <li class="list-group-item d-flex justify-content-between align-items-center px-0">
                                 <span class="font-weight-bold">Instructor</span>
-                                <span id="course-instructor">...</span>
+                                <span id="module-instructor">...</span>
                             </li>
                             <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                                <span class="font-weight-bold">Course Code</span>
-                                <span id="course-code">...</span>
+                                <span class="font-weight-bold">Module Code</span>
+                                <span id="module-code">...</span>
                             </li>
                             <li class="list-group-item d-flex justify-content-between align-items-center px-0">
                                 <span class="font-weight-bold">Credits</span>
-                                <span id="course-credits">...</span>
+                                <span id="module-credits">...</span>
                             </li>
                             <li class="list-group-item d-flex justify-content-between align-items-center px-0">
                                 <span class="font-weight-bold">Term</span>
-                                <span id="course-term">...</span>
+                                <span id="module-term">...</span>
                             </li>
                             <li class="list-group-item d-flex justify-content-between align-items-center px-0">
                                 <span class="font-weight-bold">Capacity</span>
-                                <span id="course-capacity">...</span>
+                                <span id="module-capacity">...</span>
                             </li>
                         </ul>
                     </div>
@@ -72,14 +72,14 @@
                         <h5 class="mb-3">Enrollment Status</h5>
                         <div class="d-flex justify-content-between mb-1">
                             <span>Slots Left</span>
-                            <strong id="course-slots-left">...</strong>
+                            <strong id="module-slots-left">...</strong>
                         </div>
                         <div class="progress" style="height: 10px;">
-                            <div class="progress-bar bg-secondary" role="progressbar" id="course-progress-bar"
+                            <div class="progress-bar bg-secondary" role="progressbar" id="module-progress-bar"
                                  style="width: 0%;" aria-valuemin="0" aria-valuemax="100">
                             </div>
                         </div>
-                        <small class="text-muted" id="course-slots-filled">... of ... slots filled</small>
+                        <small class="text-muted" id="module-slots-filled">... of ... slots filled</small>
                     </div>
                 </div>
             </div>
@@ -88,81 +88,81 @@
 </div>
 
 <script>
-    let currentCourseData = null;
+    let currentModuleData = null;
 
     document.addEventListener('DOMContentLoaded', () => {
         // Get ID from data attribute (No Jinja errors)
-        const dataElement = document.getElementById('course-data');
-        const courseId = dataElement ? dataElement.dataset.courseId : null;
+        const dataElement = document.getElementById('module-data');
+        const moduleId = dataElement ? dataElement.dataset.moduleId : null;
         
-        if(courseId) populateCourseData(courseId);
+        if(moduleId) populateModuleData(moduleId);
     });
 
-    async function populateCourseData(id) {
+    async function populateModuleData(id) {
         try {
             // 1. Build URL with student_id if logged in
-            let url = `/api/courses/${id}`;
+            let url = `/api/modules/${id}`;
             if (currentState.loggedIn && currentState.studentId) {
                 url += `?student_id=${currentState.studentId}`;
             }
 
-            const course = await apiFetch(url);
-            currentCourseData = course;
+            const module = await apiFetch(url);
+            currentModuleData = module;
 
-            if (!course || course.error) {
-                document.getElementById('course-title').innerText = "Course not found.";
+            if (!module || module.error) {
+                document.getElementById('module-title').innerText = "Module not found.";
                 return;
             }
 
             // --- Update Text ---
-            document.title = `${course.course_name} - Edukate`;
-            document.getElementById('course-header-code').innerText = course.course_id;
-            document.getElementById('breadcrumb-title').innerText = course.course_name;
-            document.getElementById('course-title').innerText = course.course_name;
-            document.getElementById('course-description').innerText = course.description || "No description available.";
+            document.title = `${module.module_name} - Edukate`;
+            document.getElementById('module-header-code').innerText = module.module_id;
+            document.getElementById('breadcrumb-title').innerText = module.module_name;
+            document.getElementById('module-title').innerText = module.module_name;
+            document.getElementById('module-description').innerText = module.description || "No description available.";
             
             // Prerequisites
-            const prereqs = course.prerequisites;
-            document.getElementById('course-prereqs').innerText = (prereqs && prereqs !== 'None') 
+            const prereqs = module.prerequisites;
+            document.getElementById('module-prereqs').innerText = (prereqs && prereqs !== 'None') 
                 ? `Requires: ${prereqs}`
                 : "No prerequisites required.";
 
             // Sidebar
-            document.getElementById('course-instructor').innerText = course.instructor_name;
-            document.getElementById('course-code').innerText = course.course_id;
-            document.getElementById('course-credits').innerText = course.credits;
-            document.getElementById('course-term').innerText = course.academic_term;
-            document.getElementById('course-capacity').innerText = `${course.max_capacity} Students`;
+            document.getElementById('module-instructor').innerText = module.instructor_name;
+            document.getElementById('module-code').innerText = module.module_id;
+            document.getElementById('module-credits').innerText = module.credits;
+            document.getElementById('module-term').innerText = module.academic_term;
+            document.getElementById('module-capacity').innerText = `${module.max_capacity} Students`;
 
             // Stats
-            const current = course.current_enrollment;
-            const max = course.max_capacity;
-            const left = course.slots_left;
+            const current = module.current_enrollment;
+            const max = module.max_capacity;
+            const left = module.slots_left;
             
-            document.getElementById('course-slots-left').innerText = left;
-            document.getElementById('course-slots-filled').innerText = `${current} of ${max} slots filled`;
+            document.getElementById('module-slots-left').innerText = left;
+            document.getElementById('module-slots-filled').innerText = `${current} of ${max} slots filled`;
 
             const percent = max > 0 ? Math.min((current / max) * 100, 100) : 0;
-            const progressBar = document.getElementById('course-progress-bar');
+            const progressBar = document.getElementById('module-progress-bar');
             progressBar.style.width = `${percent}%`;
             
             // --- BUTTON LOGIC (Crucial Part) ---
             const btn = document.getElementById('btn-enroll');
             
             // Check if user is already enrolled
-            if (course.student_status === 'Enrolled') {
+            if (module.student_status === 'Enrolled') {
                 btn.innerText = "Already Enrolled";
                 btn.disabled = true;
                 btn.className = "btn btn-success btn-block btn-lg py-3"; // Green button
                 btn.innerHTML = '<i class="fa fa-check mr-2"></i> Enrolled';
             } 
-            else if (course.student_status === 'Completed') {
-                btn.innerText = "Course Completed";
+            else if (module.student_status === 'Completed') {
+                btn.innerText = "Module Completed";
                 btn.disabled = true;
                 btn.className = "btn btn-info btn-block btn-lg py-3"; // Blue button
             }
             else if (left <= 0) {
-                btn.innerText = "Course Full";
+                btn.innerText = "Module Full";
                 btn.disabled = true;
                 btn.className = "btn btn-danger btn-block btn-lg py-3";
             } 
@@ -174,7 +174,7 @@
 
         } catch (error) {
             console.error("Error:", error);
-            document.getElementById('course-title').innerText = "Error loading data.";
+            document.getElementById('module-title').innerText = "Error loading data.";
         }
     }
 
@@ -190,12 +190,12 @@
             return;
         }
 
-        if(!confirm(`Confirm enrollment in ${currentCourseData.course_id}?`)) return;
+        if(!confirm(`Confirm enrollment in ${currentModuleData.module_id}?`)) return;
 
         try {
             const payload = {
                 student_id: currentState.studentId,
-                course_id: currentCourseData.course_id
+                module_id: currentModuleData.module_id
             };
             
             const response = await apiFetch('/api/enroll', {
@@ -204,7 +204,7 @@
             });
 
             alert(response.message || "Success!");
-            populateCourseData(currentCourseData.course_id); // Refresh UI
+            populateModuleData(currentModuleData.module_id); // Refresh UI
         } catch (error) {
             alert(error.message);
         }

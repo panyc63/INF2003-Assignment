@@ -49,67 +49,69 @@ class Instructor(db.Model):
     title = db.Column(db.String(50))
 
     user = db.relationship("User", back_populates="instructor")
-    courses_taught = db.relationship("Course", back_populates="instructor", lazy='dynamic')
+    modules_taught = db.relationship("Module", back_populates="instructor", lazy='dynamic')
 
     def __repr__(self):
         return f"<Instructor ID:{self.instructor_id} Title:{self.title}>"
 
 # Defines the structure and details of a university course.
-class Course(db.Model):
-    __tablename__ = 'courses'
-    course_id = db.Column(db.String(10), primary_key=True)
-    course_name = db.Column(db.String(150), nullable=False)
+class Module(db.Model):
+    __tablename__ = 'modules'
+    module_id = db.Column(db.String(10), primary_key=True)
+    module_name = db.Column(db.String(150), nullable=False)
     description = db.Column(db.Text)
     credits = db.Column(db.Integer)
     academic_term = db.Column(db.String(20))
     max_capacity = db.Column(db.Integer, default=30)
     current_enrollment = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+    target_majors = db.Column(db.String(100))  # New field for target majors
+
     instructor_id = db.Column(db.Integer, db.ForeignKey('instructors.instructor_id'), nullable=True)
 
-    instructor = db.relationship("Instructor", back_populates="courses_taught")
-    enrollments = db.relationship("Enrollment", back_populates="course", lazy='dynamic', cascade="all, delete-orphan")
-    assignments = db.relationship("Assignment", back_populates="course", lazy='dynamic', cascade="all, delete-orphan")
-    
-    prerequisites = db.relationship("Prerequisites", foreign_keys='Prerequisites.course_id', back_populates="course", lazy='dynamic', cascade="all, delete-orphan")
-    is_prerequisite_for = db.relationship("Prerequisites", foreign_keys='Prerequisites.requires_course_id', back_populates="prerequisite_course", lazy='dynamic', cascade="all, delete-orphan")
+    instructor = db.relationship("Instructor", back_populates="modules_taught")
+    enrollments = db.relationship("Enrollment", back_populates="module", lazy='dynamic', cascade="all, delete-orphan")
+    assignments = db.relationship("Assignment", back_populates="module", lazy='dynamic', cascade="all, delete-orphan")
+
+    prerequisites = db.relationship("Prerequisites", foreign_keys='Prerequisites.module_id', back_populates="module", lazy='dynamic', cascade="all, delete-orphan")
+    is_prerequisite_for = db.relationship("Prerequisites", foreign_keys='Prerequisites.requires_module_id', back_populates="prerequisite_module", lazy='dynamic', cascade="all, delete-orphan")
 
     def __repr__(self):
-        return f"<Course {self.course_id}: {self.course_name}>"
+        return f"<Module {self.module_id}: {self.module_name}>"
 
-# Defines the many-to-many relationship for course prerequisites.
+
+# Defines the many-to-many relationship for module prerequisites.
 class Prerequisites(db.Model):
     __tablename__ = 'prerequisites'
-    course_id = db.Column(db.String(10), db.ForeignKey('courses.course_id'), primary_key=True)
-    requires_course_id = db.Column(db.String(10), db.ForeignKey('courses.course_id'), primary_key=True)
+    module_id = db.Column(db.String(10), db.ForeignKey('modules.module_id'), primary_key=True)
+    requires_module_id = db.Column(db.String(10), db.ForeignKey('modules.module_id'), primary_key=True)
 
-    course = db.relationship("Course", foreign_keys=[course_id], back_populates="prerequisites")
-    prerequisite_course = db.relationship("Course", foreign_keys=[requires_course_id], back_populates="is_prerequisite_for")
+    module = db.relationship("Module", foreign_keys=[module_id], back_populates="prerequisites")
+    prerequisite_module = db.relationship("Module", foreign_keys=[requires_module_id], back_populates="is_prerequisite_for")
 
     def __repr__(self):
-        return f"<Prerequisite: {self.course_id} requires {self.requires_course_id}>"
+        return f"<Prerequisite: {self.module_id} requires {self.requires_module_id}>"
 
 # Represents a student's enrollment in a specific course.
 class Enrollment(db.Model):
     __tablename__ = 'enrollments'
     student_id = db.Column(db.Integer, db.ForeignKey('students.student_id'), primary_key=True)
-    course_id = db.Column(db.String(10), db.ForeignKey('courses.course_id'), primary_key=True)
+    module_id = db.Column(db.String(10), db.ForeignKey('modules.module_id'), primary_key=True)
     
     enrolled_at = db.Column(db.DateTime, default=datetime.utcnow) 
     final_grade = db.Column(db.String(2)) 
     status = db.Column(db.String(20), default='Enrolled')
     student = db.relationship("Student", back_populates="enrollments")
-    course = db.relationship("Course", back_populates="enrollments")
+    module = db.relationship("Module", back_populates="enrollments")
 
     def __repr__(self):
-        return f"<Enrollment student={self.student_id} course={self.course_id}>"
+        return f"<Enrollment student={self.student_id} module={self.module_id}>"
 
 # Defines a single assignment belonging to a course.
 class Assignment(db.Model):
     __tablename__ = 'assignments'
     assignment_id = db.Column(db.Integer, primary_key=True)
-    course_id = db.Column(db.String(10), db.ForeignKey('courses.course_id'), nullable=False)
+    module_id = db.Column(db.String(10), db.ForeignKey('modules.module_id'), nullable=False)
     title = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
     due_date = db.Column(db.DateTime, nullable=False)
@@ -117,7 +119,7 @@ class Assignment(db.Model):
     assignment_type = db.Column(db.String(50))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    course = db.relationship("Course", back_populates="assignments")
+    module = db.relationship("Module", back_populates="assignments")
     submissions = db.relationship("Submission", back_populates="assignment", lazy='dynamic', cascade="all, delete-orphan")
 
     def __repr__(self):

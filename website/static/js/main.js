@@ -39,8 +39,8 @@
     });
 
 
-    // Courses carousel
-    $(".courses-carousel").owlCarousel({
+    // Modules carousel
+    $(".modules-carousel").owlCarousel({
         autoplay: true,
         smartSpeed: 1500,
         loop: true,

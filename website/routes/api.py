@@ -4,21 +4,22 @@ import re
 import difflib
 from sentence_transformers import SentenceTransformer
 from ..services.services import (
-    get_course_data,
-    get_course_details_by_id,
+    get_module_data,
+    get_module_details_by_id,
     get_student_data,
     get_student_enrollments,
-    enroll_student_in_course,
+    enroll_student_in_module,
     get_user_data,
     get_student_details_by_user_id,
     get_instructor_details_by_user_id,
-    get_instructor_courses,
-    get_students_in_course,
-    get_course_details_by_ids_list,
-    drop_student_enrollment,
-    create_course,
-    update_course,
-    delete_course,
+    get_instructor_modules,
+    get_students_in_module,
+    
+    drop_student_enrollment_module,
+    create_module,
+    update_module,
+    delete_module,
+    get_module_details_by_ids_list,
     get_all_users_detailed,
     toggle_user_status,
     create_user,
@@ -48,21 +49,21 @@ def switch_database():
 # PUBLIC & STUDENT ROUTES
 # =========================================================
 
-@api_bp.route('/courses', methods=['GET'])
-def get_courses():
-    """Retrieve all course data."""
-    all_courses = get_course_data()
-    return jsonify(all_courses)
+@api_bp.route('/modules', methods=['GET'])
+def get_modules():
+    """Retrieve all module data."""
+    all_modules = get_module_data()
+    return jsonify(all_modules)
 
-@api_bp.route('/courses/<string:course_id>', methods=['GET'])
-def get_course(course_id):
+@api_bp.route('/modules/<string:module_id>', methods=['GET'])
+def get_module(module_id):
     # Get student_id from query params (optional)
     student_id = request.args.get('student_id')
     
-    course = get_course_details_by_id(course_id, student_id)
-    if course:
-        return jsonify(course)
-    return jsonify({"error": "Course not found"}), 404
+    module = get_module_details_by_id(module_id, student_id)
+    if module:
+        return jsonify(module)
+    return jsonify({"error": "Module not found"}), 404
 
 @api_bp.route('/students', methods=['GET'])
 def get_students():
@@ -70,97 +71,78 @@ def get_students():
     all_students = get_student_data()
     return jsonify(all_students)
 @api_bp.route('/search', methods=['GET'])
-def search_courses():
-    """
-    The Ultimate Search Function:
-    1. Checks for Exact Code (Regex)
-    2. Checks for Typo/Fuzzy Code (Difflib)
-    3. Falls back to Semantic Search (Vector) with Filters
-    """
+def search_modules():
+    """Semantic Search for modules with Exact Match fallback."""
     original_query = request.args.get('q', '').strip()
     term = request.args.get('term', None)
     level = request.args.get('level', None)
     instructor = request.args.get('instructor', None)
+    
+    # Get major param
+    student_major = request.args.get('major', None)
 
     if not original_query:
         return jsonify({"error": "No query provided"}), 400
 
-    # Clean up query for code matching (remove spaces)
+    # --- 1. EXACT MATCH CHECK (Regex) ---
     clean_query = original_query.replace(" ", "")
+    module_code_pattern = re.compile(r'^[a-zA-Z]{1,4}\d{3,4}[a-zA-Z]?$')
     
-    # Regex: 1-4 letters, 3-4 numbers (matches "inf1002", "cs101")
-    course_id_pattern = re.compile(r'^[a-zA-Z]{1,4}\d{3,4}[a-zA-Z]?$')
-    
-    # --- STRATEGY 1: CODE LOOKUP ---
-    if course_id_pattern.match(clean_query):
-        
-        # A. Try Exact Match
-        exact_matches = list(mongo.db.courses.find(
-            {"course_id": {"$regex": f"^{clean_query}$", "$options": "i"}},
-            {"_id": 0, "course_id": 1}
+    if module_code_pattern.match(clean_query):
+        # Look in 'modules' collection
+        exact_matches = list(mongo.db.modules.find(
+            {"module_id": {"$regex": f"^{clean_query}$", "$options": "i"}},
+            {"_id": 0, "module_id": 1}
         ))
         
         if exact_matches:
-            course_ids = [res['course_id'] for res in exact_matches]
-            hydrated = get_course_details_by_ids_list(course_ids)
-            for res in hydrated: res['score'] = 1.0
-            return jsonify(hydrated)
+            module_ids = [res['module_id'] for res in exact_matches]
+            hydrated_results = get_module_details_by_ids_list(module_ids)
             
-        # B. Try Fuzzy Match (Difflib) - The "Typo Fixer"
-        # Get ALL real IDs (fast for <1000 items)
-        all_courses = list(mongo.db.courses.find({}, {"course_id": 1, "_id": 0}))
-        all_ids = [c['course_id'] for c in all_courses]
-        
-        # Find closest match (must be at least 60% similar)
-        closest_matches = difflib.get_close_matches(clean_query.upper(), all_ids, n=1, cutoff=0.6)
-        
-        if closest_matches:
-            best_match = closest_matches[0]
-            # Return the corrected course
-            hydrated = get_course_details_by_ids_list([best_match])
-            for res in hydrated: res['score'] = 0.95 # High score for fuzzy match
-            return jsonify(hydrated)
+            for res in hydrated_results:
+                res['score'] = 1.0
+                # Ensure module_code exists (it's same as module_id)
+                res['module_code'] = res['module_id']
+            
+            return jsonify(hydrated_results)
 
-    # --- STRATEGY 2: SEMANTIC VECTOR SEARCH ---
+    # --- 2. VECTOR SEARCH ---
     query_vector = model.encode(original_query).tolist()
     
-    # Build Filters using standard MongoDB Operators ($eq)
     filter_list = []
     
     if term:
         filter_list.append({"academic_term": {"$eq": term}})
-    
     if level:
         try:
-            filter_list.append({"course_level": {"$eq": int(level)}})
-        except ValueError:
-            pass 
-
+            filter_list.append({"module_level": {"$eq": int(level)}})
+        except ValueError: pass 
     if instructor:
         filter_list.append({"instructor_name": {"$eq": instructor}})
 
-    # Construct Pipeline
+    # Filter by Major
+    if student_major:
+        filter_list.append({"target_majors": {"$eq": student_major}})
+
     vector_search_stage = {
-        "index": "vector_search",
+        "index": "vector_index_search",
         "path": "embedding",
         "queryVector": query_vector,
         "numCandidates": 100,
         "limit": 10
     }
 
-    # Only add filter if needed
-    if len(filter_list) == 1:
-        vector_search_stage["filter"] = filter_list[0]
-    elif len(filter_list) > 1:
-        vector_search_stage["filter"] = {"$and": filter_list}
+    if filter_list:
+        vector_filter = filter_list[0] if len(filter_list) == 1 else {"$and": filter_list}
+        vector_search_stage["filter"] = vector_filter
 
     pipeline = [
         {"$vectorSearch": vector_search_stage},
-        {"$project": {"_id": 0, "course_id": 1, "score": { "$meta": "vectorSearchScore" }}}
+        {"$project": {"_id": 0, "module_id": 1, "score": { "$meta": "vectorSearchScore" }}}
     ]
     
     try:
-        mongo_results = list(mongo.db.courses.aggregate(pipeline))
+        mongo_results = list(mongo.db.modules.aggregate(pipeline))
     except Exception as e:
         print(f"Mongo Error: {e}")
         return jsonify({"error": str(e)}), 500
@@ -168,118 +150,15 @@ def search_courses():
     if not mongo_results:
         return jsonify([])
 
-    # Hydrate Results
-    course_ids = [res['course_id'] for res in mongo_results]
-    hydrated_results = get_course_details_by_ids_list(course_ids)
+    module_ids = [res['module_id'] for res in mongo_results]
+    hydrated_results = get_module_details_by_ids_list(module_ids)
     
-    # Merge Scores
-    score_map = {res['course_id']: res['score'] for res in mongo_results}
+    score_map = {res['module_id']: res['score'] for res in mongo_results}
+    
     for res in hydrated_results:
-        res['score'] = score_map.get(res['course_id'], 0)
-
-    return jsonify(hydrated_results)
-    """Semantic Search with Robust Exact Match."""
-    original_query = request.args.get('q', '').strip()
-    term = request.args.get('term', None)
-    level = request.args.get('level', None)
-    instructor = request.args.get('instructor', None)
-
-    if not original_query:
-        return jsonify({"error": "No query provided"}), 400
-
-    # --- 1. EXACT MATCH CHECK (Regex/Fuzzy) ---
-    # (Keep your existing Regex/Fuzzy logic here, it is fine)
-    clean_query = original_query.replace(" ", "")
-    course_id_pattern = re.compile(r'^[a-zA-Z]{1,4}\d{3,4}[a-zA-Z]?$')
-    
-    if course_id_pattern.match(clean_query):
-        # ... (Keep your exact/fuzzy match logic) ...
-        # (If you need me to paste the whole thing again let me know, 
-        # but the error is in the vector section below)
-        pass 
-
-    # --- 2. SEMANTIC SEARCH (Vector) ---
-    query_vector = model.encode(original_query).tolist()
-    
-    # Build the list of filter conditions
-    must_conditions = []
-    
-    if term:
-        # Note: Use 'text' query for string fields in a 'filter' index
-        must_conditions.append({
-            "text": {
-                "query": term,
-                "path": "academic_term"
-            }
-        })
-    
-    if level:
-        try:
-            # Note: Use 'equals' for number fields
-            must_conditions.append({
-                "equals": {
-                    "value": int(level),
-                    "path": "course_level"
-                }
-            })
-        except ValueError:
-            pass 
-
-    if instructor:
-        must_conditions.append({
-            "text": {
-                "query": instructor,
-                "path": "instructor_name"
-            }
-        })
-
-    # --- CONSTRUCT THE PIPELINE ---
-    vector_search_stage = {
-        "index": "vector_search",
-        "path": "embedding",
-        "queryVector": query_vector,
-        "numCandidates": 100,
-        "limit": 10
-    }
-
-    # ONLY add the 'filter' field if we actually have conditions
-    if must_conditions:
-        vector_search_stage["filter"] = {
-            "compound": {
-                "must": must_conditions
-            }
-        }
-
-    pipeline = [
-        {
-            "$vectorSearch": vector_search_stage
-        },
-        {
-            "$project": {
-                "_id": 0,
-                "course_id": 1,
-                "score": { "$meta": "vectorSearchScore" }
-            }
-        }
-    ]
-    
-    try:
-        mongo_results = list(mongo.db.courses.aggregate(pipeline))
-    except Exception as e:
-        print(f"Mongo Error: {e}")
-        return jsonify({"error": "Database search failed"}), 500
-
-    if not mongo_results:
-        return jsonify([])
-
-    # Hydrate results from SQL
-    course_ids = [res['course_id'] for res in mongo_results]
-    hydrated_results = get_course_details_by_ids_list(course_ids)
-    
-    # Merge scores
-    score_map = {res['course_id']: res['score'] for res in mongo_results}
-    for res in hydrated_results:
-        res['score'] = score_map.get(res['course_id'], 0)
+        res['score'] = score_map.get(res['module_id'], 0)
+        # Ensure module_code exists
+        res['module_code'] = res['module_id']
 
     return jsonify(hydrated_results)
 # =========================================================
@@ -297,17 +176,18 @@ def enroll_student():
 
     # Manual key check instead of .get()
     student_id = data['student_id'] if 'student_id' in data else None
-    course_id = data['course_id'] if 'course_id' in data else None
+    module_id = data['module_id'] if 'module_id' in data else None
 
-    if not student_id or not course_id:
-        return jsonify({"message": "Missing student_id or course_id"}), 400
+    if not student_id or not module_id:
+        return jsonify({"message": "Missing student_id or module_id"}), 400
 
     try:
-        message = enroll_student_in_course(student_id, course_id)
+        # use module function
+        message = enroll_student_in_module(student_id, module_id)
         return jsonify({"message": message}), 200
     except ValueError as e:
         return jsonify({"message": str(e)}), 409
-    except Exception as e:
+    except Exception:
         return jsonify({"message": "Enrollment failed"}), 500
 
 @api_bp.route('/enroll/drop', methods=['POST'])
@@ -319,13 +199,13 @@ def drop_enrollment():
 
     # Manual key check
     student_id = data['student_id'] if 'student_id' in data else None
-    course_id = data['course_id'] if 'course_id' in data else None
+    module_id = data['module_id'] if 'module_id' in data else None
 
-    if not student_id or not course_id:
-        return jsonify({"message": "Missing student_id or course_id"}), 400
+    if not student_id or not module_id:
+        return jsonify({"message": "Missing student_id or module_id"}), 400
 
     try:
-        message = drop_student_enrollment(student_id, course_id)
+        message = drop_student_enrollment_module(student_id, module_id)
         return jsonify({"message": message}), 200
     except ValueError as e:
         return jsonify({"message": str(e)}), 409
@@ -358,53 +238,53 @@ def api_get_student_enrollments(student_id):
     enrollments = get_student_enrollments(student_id)
     return jsonify(enrollments)
 
-@api_bp.route('/instructor/<int:instructor_id>/courses', methods=['GET'])
-def api_get_instructor_courses(instructor_id):
-    courses = get_instructor_courses(instructor_id)
-    return jsonify(courses)
+@api_bp.route('/instructor/<int:instructor_id>/modules', methods=['GET'])
+def api_get_instructor_modules(instructor_id):
+    modules = get_instructor_modules(instructor_id)
+    return jsonify(modules)
 
-@api_bp.route('/course/<string:course_id>/students', methods=['GET'])
-def api_get_course_students(course_id):
-    students = get_students_in_course(course_id)
+@api_bp.route('/module/<string:module_id>/students', methods=['GET'])
+def api_get_module_students(module_id):
+    students = get_students_in_module(module_id)
     return jsonify(students)
 
 # =========================================================
 # ADMIN ROUTES
 # =========================================================
 
-@api_bp.route('/admin/courses', methods=['POST'])
-def api_create_course():
+@api_bp.route('/admin/modules', methods=['POST'])
+def api_create_module():
     try:
         # Ensure we have valid JSON dict
         data = request.get_json(silent=True)
         if data is None or not isinstance(data, dict):
             return jsonify({"error": "Invalid JSON payload"}), 400
             
-        msg = create_course(data)
+        msg = create_module(data)
         return jsonify({"message": msg}), 201
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@api_bp.route('/admin/courses/<string:course_id>', methods=['PUT'])
-def api_update_course(course_id):
+@api_bp.route('/admin/modules/<string:module_id>', methods=['PUT'])
+def api_update_module(module_id):
     try:
         data = request.get_json(silent=True)
         if data is None or not isinstance(data, dict):
             return jsonify({"error": "Invalid JSON payload"}), 400
             
-        msg = update_course(course_id, data)
+        msg = update_module(module_id, data)
         return jsonify({"message": msg}), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@api_bp.route('/admin/courses/<string:course_id>', methods=['DELETE'])
-def api_delete_course(course_id):
+@api_bp.route('/admin/modules/<string:module_id>', methods=['DELETE'])
+def api_delete_module(module_id):
     try:
-        msg = delete_course(course_id)
+        msg = delete_module(module_id)
         return jsonify({"message": msg}), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 404

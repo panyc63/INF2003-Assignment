@@ -152,19 +152,19 @@ h6,
     border-top: 2px dashed $secondary;
 }
 
-.courses-item img {
+.modules-item img {
     position: relative;
     margin-top: 40px;
     transition: .5s;
 }
 
-.courses-list-item img {
+.modules-list-item img {
     position: relative;
     transition: .5s;
 }
 
-.courses-item .courses-text,
-.courses-list-item .courses-text {
+.modules-item .modules-text,
+.modules-list-item .modules-text {
     position: absolute;
     width: 100%;
     height: calc(100% + 86px);
@@ -179,19 +179,19 @@ h6,
     z-index: 1;
 }
 
-.courses-list-item .courses-text {
+.modules-list-item .modules-text {
     height: 100%;
 }
 
-.courses-item:hover img {
+.modules-item:hover img {
     margin-top: 0px;
 }
 
-.courses-list-item:hover img {
+.modules-list-item:hover img {
     transform: scale(1.2);
 }
 
-.courses-item:hover .courses-text {
+.modules-item:hover .modules-text {
     height: calc(100% + 40px);
 }
 
