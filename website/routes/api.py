@@ -1,5 +1,7 @@
 from flask import Blueprint, request, jsonify
 from website import mongo
+import re
+import difflib
 from sentence_transformers import SentenceTransformer
 from ..services.services import (
     get_course_data,
@@ -22,7 +24,7 @@ from ..services.services import (
     create_user,
     update_user,
     delete_user,
-    get_user_full_details
+    get_user_full_details,
 )
 
 # Define Blueprint
@@ -30,6 +32,17 @@ api_bp = Blueprint('api', __name__, url_prefix='/api')
 
 # Load the NLP model once
 model = SentenceTransformer('all-MiniLM-L6-v2')
+
+# SWITCH FROM SQL TO MONGODB OR VICE VERSA
+@api_bp.route('/switch-db', methods=['POST'])
+def switch_database():
+    data = request.get_json(silent=True)
+    provider = data.get('provider') # 'sql' or 'mongodb'
+    
+    from ..services.services import set_db_provider
+    set_db_provider(provider)
+    
+    return jsonify({"message": f"Database switched to {provider}"})
 
 # =========================================================
 # PUBLIC & STUDENT ROUTES
@@ -43,8 +56,10 @@ def get_courses():
 
 @api_bp.route('/courses/<string:course_id>', methods=['GET'])
 def get_course(course_id):
-    """Retrieve single course details."""
-    course = get_course_details_by_id(course_id)
+    # Get student_id from query params (optional)
+    student_id = request.args.get('student_id')
+    
+    course = get_course_details_by_id(course_id, student_id)
     if course:
         return jsonify(course)
     return jsonify({"error": "Course not found"}), 404
@@ -54,50 +69,190 @@ def get_students():
     """Retrieve all student data (for login)."""
     all_students = get_student_data()
     return jsonify(all_students)
-
 @api_bp.route('/search', methods=['GET'])
 def search_courses():
-    """Semantic Search for courses."""
-    # Get parameters safely from query string (args is a dict-like object)
-    query = request.args.get('q', '')
+    """
+    The Ultimate Search Function:
+    1. Checks for Exact Code (Regex)
+    2. Checks for Typo/Fuzzy Code (Difflib)
+    3. Falls back to Semantic Search (Vector) with Filters
+    """
+    original_query = request.args.get('q', '').strip()
     term = request.args.get('term', None)
     level = request.args.get('level', None)
     instructor = request.args.get('instructor', None)
 
-    if not query:
+    if not original_query:
         return jsonify({"error": "No query provided"}), 400
-        
-    query_vector = model.encode(query).tolist()
+
+    # Clean up query for code matching (remove spaces)
+    clean_query = original_query.replace(" ", "")
     
-    # Build Filter
-    filter_conditions = []
+    # Regex: 1-4 letters, 3-4 numbers (matches "inf1002", "cs101")
+    course_code_pattern = re.compile(r'^[a-zA-Z]{1,4}\d{3,4}[a-zA-Z]?$')
+    
+    # --- STRATEGY 1: CODE LOOKUP ---
+    if course_code_pattern.match(clean_query):
+        
+        # A. Try Exact Match
+        exact_matches = list(mongo.db.courses.find(
+            {"course_id": {"$regex": f"^{clean_query}$", "$options": "i"}},
+            {"_id": 0, "course_id": 1}
+        ))
+        
+        if exact_matches:
+            course_ids = [res['course_id'] for res in exact_matches]
+            hydrated = get_course_details_by_ids_list(course_ids)
+            for res in hydrated: res['score'] = 1.0
+            return jsonify(hydrated)
+            
+        # B. Try Fuzzy Match (Difflib) - The "Typo Fixer"
+        # Get ALL real IDs (fast for <1000 items)
+        all_courses = list(mongo.db.courses.find({}, {"course_id": 1, "_id": 0}))
+        all_ids = [c['course_id'] for c in all_courses]
+        
+        # Find closest match (must be at least 60% similar)
+        closest_matches = difflib.get_close_matches(clean_query.upper(), all_ids, n=1, cutoff=0.6)
+        
+        if closest_matches:
+            best_match = closest_matches[0]
+            # Return the corrected course
+            hydrated = get_course_details_by_ids_list([best_match])
+            for res in hydrated: res['score'] = 0.95 # High score for fuzzy match
+            return jsonify(hydrated)
+
+    # --- STRATEGY 2: SEMANTIC VECTOR SEARCH ---
+    query_vector = model.encode(original_query).tolist()
+    
+    # Build Filters using standard MongoDB Operators ($eq)
+    filter_list = []
+    
     if term:
-        filter_conditions.append({"equals": {"value": term, "path": "academic_term"}})
+        filter_list.append({"academic_term": {"$eq": term}})
     
     if level:
         try:
-            filter_conditions.append({"equals": {"value": int(level), "path": "course_level"}})
+            filter_list.append({"course_level": {"$eq": int(level)}})
         except ValueError:
             pass 
 
     if instructor:
-        filter_conditions.append({"equals": {"value": instructor, "path": "instructor_name"}})
+        filter_list.append({"instructor_name": {"$eq": instructor}})
 
-    # Vector Search Pipeline
+    # Construct Pipeline
+    vector_search_stage = {
+        "index": "vector_search",
+        "path": "embedding",
+        "queryVector": query_vector,
+        "numCandidates": 100,
+        "limit": 10
+    }
+
+    # Only add filter if needed
+    if len(filter_list) == 1:
+        vector_search_stage["filter"] = filter_list[0]
+    elif len(filter_list) > 1:
+        vector_search_stage["filter"] = {"$and": filter_list}
+
+    pipeline = [
+        {"$vectorSearch": vector_search_stage},
+        {"$project": {"_id": 0, "course_id": 1, "score": { "$meta": "vectorSearchScore" }}}
+    ]
+    
+    try:
+        mongo_results = list(mongo.db.courses.aggregate(pipeline))
+    except Exception as e:
+        print(f"Mongo Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+    if not mongo_results:
+        return jsonify([])
+
+    # Hydrate Results
+    course_ids = [res['course_id'] for res in mongo_results]
+    hydrated_results = get_course_details_by_ids_list(course_ids)
+    
+    # Merge Scores
+    score_map = {res['course_id']: res['score'] for res in mongo_results}
+    for res in hydrated_results:
+        res['score'] = score_map.get(res['course_id'], 0)
+
+    return jsonify(hydrated_results)
+    """Semantic Search with Robust Exact Match."""
+    original_query = request.args.get('q', '').strip()
+    term = request.args.get('term', None)
+    level = request.args.get('level', None)
+    instructor = request.args.get('instructor', None)
+
+    if not original_query:
+        return jsonify({"error": "No query provided"}), 400
+
+    # --- 1. EXACT MATCH CHECK (Regex/Fuzzy) ---
+    # (Keep your existing Regex/Fuzzy logic here, it is fine)
+    clean_query = original_query.replace(" ", "")
+    course_code_pattern = re.compile(r'^[a-zA-Z]{1,4}\d{3,4}[a-zA-Z]?$')
+    
+    if course_code_pattern.match(clean_query):
+        # ... (Keep your exact/fuzzy match logic) ...
+        # (If you need me to paste the whole thing again let me know, 
+        # but the error is in the vector section below)
+        pass 
+
+    # --- 2. SEMANTIC SEARCH (Vector) ---
+    query_vector = model.encode(original_query).tolist()
+    
+    # Build the list of filter conditions
+    must_conditions = []
+    
+    if term:
+        # Note: Use 'text' query for string fields in a 'filter' index
+        must_conditions.append({
+            "text": {
+                "query": term,
+                "path": "academic_term"
+            }
+        })
+    
+    if level:
+        try:
+            # Note: Use 'equals' for number fields
+            must_conditions.append({
+                "equals": {
+                    "value": int(level),
+                    "path": "course_level"
+                }
+            })
+        except ValueError:
+            pass 
+
+    if instructor:
+        must_conditions.append({
+            "text": {
+                "query": instructor,
+                "path": "instructor_name"
+            }
+        })
+
+    # --- CONSTRUCT THE PIPELINE ---
+    vector_search_stage = {
+        "index": "vector_search",
+        "path": "embedding",
+        "queryVector": query_vector,
+        "numCandidates": 100,
+        "limit": 10
+    }
+
+    # ONLY add the 'filter' field if we actually have conditions
+    if must_conditions:
+        vector_search_stage["filter"] = {
+            "compound": {
+                "must": must_conditions
+            }
+        }
+
     pipeline = [
         {
-            "$vectorSearch": {
-                "index": "vector_search",
-                "path": "embedding",
-                "queryVector": query_vector,
-                "numCandidates": 100,
-                "limit": 10,
-                "filter": {
-                    "compound": {
-                        "must": filter_conditions
-                    }
-                } if filter_conditions else {} 
-            }
+            "$vectorSearch": vector_search_stage
         },
         {
             "$project": {
@@ -108,7 +263,12 @@ def search_courses():
         }
     ]
     
-    mongo_results = list(mongo.db.courses.aggregate(pipeline))
+    try:
+        mongo_results = list(mongo.db.courses.aggregate(pipeline))
+    except Exception as e:
+        print(f"Mongo Error: {e}")
+        return jsonify({"error": "Database search failed"}), 500
+
     if not mongo_results:
         return jsonify([])
 
@@ -122,7 +282,6 @@ def search_courses():
         res['score'] = score_map.get(res['course_id'], 0)
 
     return jsonify(hydrated_results)
-
 # =========================================================
 # ENROLLMENT ROUTES
 # =========================================================
