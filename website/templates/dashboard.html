@@ -5,7 +5,6 @@
 {% block content %}
 <div id="status-message-container" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-4">
 </div>
-<!-- Popup Modal -->
 <div id="enroll-popup-overlay"
     class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
     <div id="enroll-popup" class="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
@@ -13,8 +12,7 @@
             Error
         </h3>
         <p id="enroll-popup-message" class="text-sm text-gray-700 mb-4">
-            <!-- message goes here -->
-        </p>
+            </p>
         <div class="text-right">
             <button type="button" class="btn-secondary px-4 py-2" onclick="closeEnrollPopup()">
                 Close
@@ -29,32 +27,22 @@
         <p class="text-xl text-blue-600" id="welcome-message">Welcome back, loading...</p>
     </div>
 
-    <!-- === Student Metrics Cards === -->
     <div class="grid md:grid-cols-3 gap-6 mb-6">
-
-        <!-- Current GPA (still hardcoded or later dynamic) -->
         <div class="card p-8 text-center">
             <p class="text-sm text-gray-600">Current GPA</p>
             <p class="text-3xl font-bold text-gray-900" id="metric-gpa">3.85</p>
         </div>
-
-        <!-- Enrolled Courses -->
         <div class="card p-8 text-center">
             <p class="text-sm text-gray-600">Current Enrollments</p>
-            <p class="text-3xl font-bold text-gray-900" id="metric-enrolled-count">5</p>
+            <p class="text-3xl font-bold text-gray-900" id="metric-enrolled-count">0</p>
         </div>
-
-        <!-- Completed Courses -->
         <div class="card p-8 text-center">
             <p class="text-sm text-gray-600">Completed Modules</p>
             <p class="text-3xl font-bold text-gray-900" id="metric-completed-count">7</p>
         </div>
-
     </div>
-    <!-- === End Metrics Cards === -->
 
     <div id="student-info-section" class="grid md:grid-cols-2 gap-6 mb-8">
-        <!-- Left: Enrolled -->
         <div class="card bg-yellow-50">
             <h3 class="text-xl font-semibold m-3">Current Enrollments</h3>
             <div id="enrolled-list" class="space-y-2 text-sm">Loading...</div>
@@ -71,10 +59,13 @@
         <h3 class="text-xl font-semibold m-3 ">Search Modules</h3>
         <form id="module-search-form" class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
             <input type="text" id="search-query" placeholder="e.g., Core classes, Alan Turing, CS101"
-                class="flex-grow p-3 border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500"
+                class="flex-grow p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
                 required>
             <button type="submit" class="btn-primary flex-shrink-0 p-3">Search</button>
         </form>
+    </div>
+
+    <div id="pagination-controls" class="mt-3 mb-3 flex justify-center items-center space-x-2 flex-wrap gap-y-2 hidden">
     </div>
 
     <div id="scroll-to-view" class="card">
@@ -93,7 +84,13 @@
         const overlay = document.getElementById('enroll-popup-overlay');
         const titleEl = document.getElementById('enroll-popup-title');
         const msgEl = document.getElementById('enroll-popup-message');
-        if (!overlay || !titleEl || !msgEl) { alert(message); return; }
+
+        if (!overlay || !titleEl || !msgEl) {
+            console.error("Popup elements not found in DOM.");
+            alert(message); 
+            return;
+        }
+
         msgEl.textContent = message || '';
         if (type === 'success') {
             titleEl.textContent = 'Success';
@@ -110,12 +107,18 @@
         if (overlay) overlay.classList.add('hidden');
     }
 
-    // --- 2. GLOBAL DATA ---
+    // --- 2. GLOBAL DATA & STATE ---
     let allStudentEnrollments = [];
-    let studentMajorId = null; // <--- NEW: Store the dynamic major here
+    let studentMajorId = null; 
+    
+    // Pagination State
+    let currentSearchResults = []; // Holds the full list of modules currently being viewed
+    let currentPage = 1;
+    const itemsPerPage = 5;
+    let isCurrentSearchLocal = false; // Tracks if we are looking at local search results
 
     // --- 3. INIT ---
-    document.addEventListener('DOMContentLoaded', async () => { // Made async
+    document.addEventListener('DOMContentLoaded', async () => {
         if (!currentState.loggedIn) { return; }
         document.getElementById('welcome-message').textContent = 
             `Welcome back, ${currentState.userName} (ID: ${currentState.studentId})`;
@@ -124,25 +127,23 @@
         await loadStudentProfile(); 
 
         // 2. Load Enrollments & Search
-        loadStudentEnrollments();
+        await loadStudentEnrollments();
         document.getElementById('module-search-form').addEventListener('submit', handleModuleSearch);
         handleShowAllModules();
     });
 
-    // --- NEW: Fetch Major ID from Database ---
+    // --- FETCH DATA ---
     async function loadStudentProfile() {
         try {
             const data = await apiFetch(`/api/students/${currentState.studentId}`);
             if (data && data.major_id) {
-                studentMajorId = data.major_id; // e.g., 'SE'
-                console.log("Student Major loaded:", studentMajorId);
+                studentMajorId = data.major_id; 
             }
         } catch (error) {
             console.error("Failed to load student profile:", error);
         }
     }
 
-    // --- 4. LOAD DATA ---
     async function loadStudentEnrollments() {
         const enrolledList = document.getElementById('enrolled-list');
         const completedList = document.getElementById('completed-list');
@@ -201,9 +202,8 @@
             });
             if (data && data.message) {
                 showEnrollPopup(data.message, 'success');
-                loadStudentEnrollments();
-                handleShowAllModules();
-                console.log(data);
+                await loadStudentEnrollments();
+                await handleShowAllModules(); 
             }
         } catch (error) { showEnrollPopup(error.message, 'error'); }
     }
@@ -225,25 +225,22 @@
 
     async function handleShowAllModules() {
         try {
-            // We append the major query here too if we want the default list to be filtered
-            let endpoint = '/api/modules';
-            // NOTE: Your current /api/modules endpoint retrieves EVERYTHING from SQL.
-            // If you want the default view filtered, you'd need to update that API endpoint too.
-            // For now, we will rely on search to filter.
-            
+            const endpoint = '/api/modules';
             const results = await apiFetch(endpoint);
             if (results) displayModuleResults(results);
         } catch (e) { console.error(e); }
     }
 
-    // --- 6. SMART SEARCH LOGIC (DYNAMIC MAJOR) ---
+    // --- 6. SMART SEARCH LOGIC ---
     async function handleModuleSearch(event) {
         event.preventDefault();
         const query = document.getElementById('search-query').value.toLowerCase();
 
-        // 1. LOCAL Search
+        // 1. LOCAL Search Check
         const localKeywords = ['my', 'enrolled', 'completed', 'schedule'];
-        if (localKeywords.some(kw => query.includes(kw))) {
+        const isLocalSearch = localKeywords.some(kw => query.includes(kw));
+
+        if (isLocalSearch) {
             let localQuery = query.replace(/my|modules|in|enrolled|completed|schedule|of/g, '').trim();
             localQuery = localQuery.replace(/\s/g, ''); 
             const results = allStudentEnrollments.filter(c => {
@@ -258,20 +255,21 @@
         let semanticQuery = query;
         let params = new URLSearchParams();
 
-        // --- DYNAMIC MAJOR FILTER ---
+        // DYNAMIC MAJOR FILTER
         if (studentMajorId) {
-            params.set('major', studentMajorId); // Uses the value loaded from DB (e.g. 'SE')
+            params.set('major', studentMajorId);
         }
-        // ----------------------------
 
         let targetYear = null;
         let targetTri = null;
 
+        // Detect Year
         if (query.match(/y(ear)?\s?1/) || query.includes('first year') || query.includes('1000')) targetYear = 1;
         else if (query.match(/y(ear)?\s?2/) || query.includes('second year') || query.includes('2000')) targetYear = 2;
         else if (query.match(/y(ear)?\s?3/) || query.includes('third year') || query.includes('3000')) targetYear = 3;
         else if (query.match(/y(ear)?\s?4/) || query.includes('fourth year') || query.includes('4000')) targetYear = 4;
 
+        // Detect Trimester
         if (query.match(/t(ri)?\s?1/) || query.includes('fall') || query.includes('sep')) targetTri = 1;
         else if (query.match(/t(ri)?\s?2/) || query.includes('spring') || query.includes('jan')) targetTri = 2;
         else if (query.match(/t(ri)?\s?3/) || query.includes('summer') || query.includes('may')) targetTri = 3;
@@ -299,28 +297,59 @@
         if(el) el.scrollIntoView({ behavior: 'smooth' });
     }
 
-    function displayModuleResults(modules, isLocalSearch = false) {
+    // --- 7. PAGINATION & RENDERING LOGIC ---
+
+    // Phase 1: Process Data (Sort and Save)
+    function displayModuleResults(modules, isLocal = false) {
         const resultsList = document.getElementById('module-results-list');
         if (!resultsList) return;
 
         if (modules.length === 0) {
             resultsList.innerHTML = `<p class="text-center text-red-500 p-6">No modules matched your query.</p>`;
-            resultsList.innerHTML += `<button class="btn-secondary w-full mt-4 py-2" onclick="handleShowAllCourses()">Show All Modules</button>`;
+            resultsList.innerHTML += `<button class="btn-secondary w-full mt-4 py-2" onclick="handleShowAllModules()">Show All Modules</button>`;
+            document.getElementById('pagination-controls').classList.add('hidden');
             return;
         }
 
         const enrollmentStatusById = {};
         allStudentEnrollments.forEach(c => { if(c.module_id) enrollmentStatusById[c.module_id] = c.status; });
 
+        // Sort: Available first (Unenrolled -> Enrolled)
         const sortedModules = [...modules].sort((a, b) => {
             const aEnrolled = !!enrollmentStatusById[a.module_id];
             const bEnrolled = !!enrollmentStatusById[b.module_id];
-            return (aEnrolled === bEnrolled) ? 0 : (aEnrolled ? 1 : -1);
+            if (aEnrolled === bEnrolled) return 0;
+            return aEnrolled ? 1 : -1;
         });
 
-        resultsList.innerHTML = sortedModules.map(module => {
+        // Update Global State
+        currentSearchResults = sortedModules;
+        isCurrentSearchLocal = isLocal;
+        currentPage = 1; 
+
+        // Trigger Render
+        renderPage();
+        renderPaginationControls();
+    }
+
+    // Phase 2: Render Specific Page
+    function renderPage() {
+        const resultsList = document.getElementById('module-results-list');
+        
+        // Calculate Slice
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const paginatedItems = currentSearchResults.slice(startIndex, endIndex);
+
+        // Enrollment map needed again for button logic
+        const enrollmentStatusById = {};
+        allStudentEnrollments.forEach(c => {
+            if (c.module_id) enrollmentStatusById[c.module_id] = c.status;
+        });
+
+        const listContent = paginatedItems.map(module => {
             const moduleId = module.module_id;
-            const moduleCode = module.module_code || moduleId;
+            const moduleCode = module.module_id || moduleId;
             const moduleName = module.module_name || module.title;
             const description = module.description || 'No description available.';
             const prereqs = module.prerequisites || 'N/A';
@@ -331,8 +360,9 @@
             const status = enrollmentStatusById[moduleId];
             const isAlreadyEnrolled = !!status;
 
+            // Button Logic
             let btn = '';
-            if (isLocalSearch) {
+            if (isCurrentSearchLocal) {
                 const localStatus = module.status || 'Completed';
                 const colorClass = (localStatus === 'Enrolled') ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700';
                 btn = `<button class="btn-secondary ${colorClass} cursor-not-allowed" disabled>${localStatus}</button>`;
@@ -370,7 +400,81 @@
             `;
         }).join('');
 
-        resultsList.innerHTML += `<button class="btn-secondary w-full mt-4 py-2" onclick="handleShowAllCourses()">Show All Modules</button>`;
+        resultsList.innerHTML = listContent;
+    }
+
+    // Phase 3: Render Pagination Controls
+    function renderPaginationControls() {
+        const paginationContainer = document.getElementById('pagination-controls');
+        const totalPages = Math.ceil(currentSearchResults.length / itemsPerPage);
+
+        if (totalPages <= 1) {
+            paginationContainer.classList.add('hidden');
+            return;
+        } else {
+            paginationContainer.classList.remove('hidden');
+        }
+
+        let paginationHTML = '';
+
+        // Previous Button
+        paginationHTML += `
+            <button 
+                onclick="changePage(${currentPage - 1})" 
+                class="px-3 py-1 border rounded-md ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed bg-gray-50' : 'text-blue-600 hover:bg-blue-50 bg-white'}"
+                ${currentPage === 1 ? 'disabled' : ''}>
+                &laquo;
+            </button>
+        `;
+
+        // Smart Page Numbers Logic
+        const generatePageButton = (page) => `
+            <button 
+                onclick="changePage(${page})" 
+                class="px-3 py-1 border rounded-md ${page === currentPage ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-700 hover:bg-gray-100 bg-white'}">
+                ${page}
+            </button>
+        `;
+
+        const generateEllipsis = () => `<span class="px-2 text-gray-400">...</span>`;
+
+        if (totalPages <= 7) {
+            for (let i = 1; i <= totalPages; i++) paginationHTML += generatePageButton(i);
+        } else {
+            paginationHTML += generatePageButton(1);
+            if (currentPage > 3) paginationHTML += generateEllipsis();
+            let startPage = Math.max(2, currentPage - 1);
+            let endPage = Math.min(totalPages - 1, currentPage + 1);
+            if (currentPage <= 3) endPage = 4;
+            if (currentPage >= totalPages - 2) startPage = totalPages - 3;
+            for (let i = startPage; i <= endPage; i++) paginationHTML += generatePageButton(i);
+            if (currentPage < totalPages - 2) paginationHTML += generateEllipsis();
+            paginationHTML += generatePageButton(totalPages);
+        }
+
+        // Next Button
+        paginationHTML += `
+            <button 
+                onclick="changePage(${currentPage + 1})" 
+                class="px-3 py-1 border rounded-md ${currentPage === totalPages ? 'text-gray-400 cursor-not-allowed bg-gray-50' : 'text-blue-600 hover:bg-blue-50 bg-white'}"
+                ${currentPage === totalPages ? 'disabled' : ''}>
+                &raquo;
+            </button>
+        `;
+
+        paginationContainer.innerHTML = paginationHTML;
+    }
+
+    function changePage(newPage) {
+        const totalPages = Math.ceil(currentSearchResults.length / itemsPerPage);
+        if (newPage < 1 || newPage > totalPages) return;
+
+        currentPage = newPage;
+        renderPage();
+        renderPaginationControls();
+        
+        const listTop = document.getElementById('module-results-list');
+        if (listTop) listTop.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 </script>
 {% endblock %}
