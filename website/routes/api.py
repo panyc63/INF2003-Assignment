@@ -14,6 +14,7 @@ from ..services.services import (
     get_instructor_data,
     get_instructor_details_by_user_id,
     get_instructors_by_name,
+    get_instructors_by_name_and_dept,
     get_instructor_modules,
     get_students_in_module,
     
@@ -239,13 +240,12 @@ def search_instructors():
     query = request.args.get('q', '').strip()
     if not query:
         return jsonify({"error": "No query provided"}), 400
-
     try:
+        if ':' in query:
+            instructors = get_instructors_by_name_and_dept(query)
+        else:
+            instructors = get_instructors_by_name(query)
         
-        # Get from active database (Mongo or SQL)
-        instructors = get_instructors_by_name(query)
-
-
         return jsonify(instructors)
     except Exception as e:
         print(f"Error searching instructors: {e}")

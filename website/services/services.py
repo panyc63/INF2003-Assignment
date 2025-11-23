@@ -116,3 +116,5 @@ def get_students_in_module(cid):
 
 def get_instructors_by_name(query):
     return _active_service.get_instructors_by_name(query)
+def get_instructors_by_name_and_dept(query):
+    return _active_service.get_instructors_by_name_and_dept(query)

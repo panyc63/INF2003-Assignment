@@ -68,13 +68,8 @@ async function handleSearch() {
         return;
     }
     try {
-        if (query.includes(':')){
-            const splitQuery=query.split(':');
-            const results = await apiFetch(`/api/search_instructors?q=${encodeURIComponent(query)}`);
-        }
-        else{
-            const results = await apiFetch(`/api/search_instructors?q=${encodeURIComponent(query)}`);
-        }
+        const results = await apiFetch(`/api/search_instructors?q=${encodeURIComponent(query)}`);
+        
         
         renderInstructors(results);
         document.getElementById('instructor-list-container')

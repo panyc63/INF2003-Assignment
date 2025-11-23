@@ -341,6 +341,31 @@ def get_instructors_by_name(query: str) -> List[Dict[str, Any]]:
             "department_code": r.department_code,
             "title": r.title
         }
+        for r in rows]
+def get_instructors_by_name_and_dept(query: str) -> List[Dict[str, Any]]:
+    """Search instructors by name (SQL version) with dept limit."""
+    dept_constr, name_part = map(str.strip, query.split(':', 1))
+    query_like = f"%{name_part}%"
+
+    sql = text("""
+        SELECT i.instructor_id, u.first_name, u.last_name, i.department_code, i.title
+        FROM instructors i
+        JOIN users u ON i.instructor_id = u.user_id
+        WHERE (LOWER(u.first_name) LIKE LOWER(:q)
+            OR LOWER(u.last_name) LIKE LOWER(:q)
+            OR LOWER(CONCAT(u.first_name, ' ', u.last_name)) LIKE LOWER(:q))
+          AND LOWER(i.department_code) = LOWER(:dept)
+    """)
+
+    rows = db.session.execute(sql, {"q": query_like, "dept": dept_constr}).all()
+
+    return [
+        {
+            "id": r.instructor_id,
+            "name": f"{r.first_name} {r.last_name}",
+            "department_code": r.department_code,
+            "title": r.title
+        }
         for r in rows
     ]
 

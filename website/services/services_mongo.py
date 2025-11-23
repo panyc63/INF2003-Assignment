@@ -388,3 +388,40 @@ def get_instructors_by_name(query: str):
         } 
         for i in instructors
     ]
+def get_instructors_by_name_and_dept(query: str):
+    """Return a list of instructors matching the department and name (partial, case-insensitive)."""
+    if not query:
+        return []
+
+    # Split query into department and name
+    dept_code, name_part = map(str.strip, query.split(':', 1))
+
+    # Case-insensitive regex for partial name match
+    regex = {"$regex": name_part, "$options": "i"}
+
+    mongo_query = {
+        "role": "instructor",
+        "dept": dept_code,  # exact match on department
+        "$or": [
+            {"first_name": regex},
+            {"last_name": regex},
+            {"$expr": {"$regexMatch": {
+                "input": {"$concat": ["$first_name", " ", "$last_name"]},
+                "regex": name_part,
+                "options": "i"
+            }}}
+        ]
+    }
+
+    instructors = list(mongo.db.users.find(mongo_query))
+
+    return [
+        {
+            "id": i.get("user_id"),
+            "name": f"{i.get('first_name')} {i.get('last_name')}",
+            "department_code": i.get("dept"),
+            "title": i.get("title")
+        } 
+        for i in instructors
+    ]
+
