@@ -11,7 +11,9 @@ from ..services.services import (
     enroll_student_in_module,
     get_user_data,
     get_student_details_by_user_id,
+    get_instructor_data,
     get_instructor_details_by_user_id,
+    get_instructors_by_name,
     get_instructor_modules,
     get_students_in_module,
     
@@ -225,6 +227,32 @@ def api_get_student_details(user_id):
     if student_data:
         return jsonify(student_data)
     return jsonify({"error": "Student not found"}), 404
+
+@api_bp.route('/instructors', methods=['GET'])
+def get_instructors():
+    """Retrieve all instructor data."""
+    return jsonify(get_instructor_data())
+
+@api_bp.route('/search_instructors', methods=['GET'])
+def search_instructors():
+    """Search instructors by name with partial matching."""
+    query = request.args.get('q', '').strip()
+    if not query:
+        return jsonify({"error": "No query provided"}), 400
+
+    try:
+        # Get from active database (Mongo or SQL)
+        instructors = get_instructors_by_name(query)
+
+        # Add a default score for uniformity
+        for inst in instructors:
+            inst['score'] = 1.0
+
+        return jsonify(instructors)
+    except Exception as e:
+        print(f"Error searching instructors: {e}")
+        return jsonify({"error": str(e)}), 500
+
 
 @api_bp.route('/instructors/<int:user_id>', methods=['GET'])
 def api_get_instructor_details(user_id):

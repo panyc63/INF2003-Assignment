@@ -357,3 +357,34 @@ def get_students_in_module(cid):
         "major": s.get('major'), 
         "university_id": s.get('university_id')
     } for s in students]
+    
+def get_instructors_by_name(query: str):
+    """Return a list of instructors matching the query (partial, case-insensitive)."""
+    if not query:
+        return []
+
+    # Build a case-insensitive regex for partial matching
+    regex = {"$regex": query, "$options": "i"}
+
+    instructors = list(mongo.db.users.find({
+        "role": "instructor",
+        "$or": [
+            {"first_name": regex},
+            {"last_name": regex},
+            {"$expr": {"$regexMatch": {
+                "input": {"$concat": ["$first_name", " ", "$last_name"]},
+                "regex": query,
+                "options": "i"
+            }}}
+        ]
+    }))
+
+    return [
+        {
+            "id": i.get("user_id"),
+            "name": f"{i.get('first_name')} {i.get('last_name')}",
+            "department_code": i.get("dept"),
+            "title": i.get("title")
+        } 
+        for i in instructors
+    ]
