@@ -11,6 +11,7 @@ from ..services.services import (
     enroll_student_in_module,
     get_user_data,
     get_student_details_by_user_id,
+    get_instructor_data,
     get_instructor_details_by_user_id,
     get_instructor_modules,
     get_students_in_module,
@@ -226,6 +227,73 @@ def api_get_student_details(user_id):
         return jsonify(student_data)
     return jsonify({"error": "Student not found"}), 404
 
+@api_bp.route('/instructors', methods=['GET'])
+def get_instructors():
+    """Retrieve all instructor data."""
+    return jsonify(get_instructor_data())
+@api_bp.route('/search_instructors', methods=['GET'])
+def search_instructors():
+    """Search instructors by name (first or last) with exact match fallback."""
+    original_query = request.args.get('q', '').strip()
+    if not original_query:
+        return jsonify({"error": "No query provided"}), 400
+
+    # Clean query for exact match
+    clean_query = original_query.replace(" ", "").lower()
+
+    # Query instructors joined with users
+    query = db.session.query(
+        User.user_id,
+        User.first_name,
+        User.last_name,
+        Instructor.title,
+        Instructor.department_code,
+        Instructor.office_location,
+        Instructor.office_hours
+    ).join(Instructor, User.user_id == Instructor.instructor_id
+    ).filter(User.role == 'instructor')
+
+    # --- 1. Exact match fallback ---
+    exact_matches = query.filter(
+        func.lower(func.concat(User.first_name, User.last_name)) == clean_query
+    ).all()
+
+    if exact_matches:
+        results = []
+        for inst in exact_matches:
+            results.append({
+                "instructor_id": inst.user_id,
+                "name": f"{inst.first_name} {inst.last_name}",
+                "title": inst.title,
+                "department_code": inst.department_code,
+                "office_location": inst.office_location,
+                "office_hours": inst.office_hours,
+                "score": 1.0
+            })
+        return jsonify(results)
+
+    # --- 2. Fallback / partial match search ---
+    partial_matches = query.filter(
+        or_(
+            User.first_name.ilike(f"%{original_query}%"),
+            User.last_name.ilike(f"%{original_query}%"),
+            func.concat(User.first_name, " ", User.last_name).ilike(f"%{original_query}%")
+        )
+    ).all()
+
+    results = []
+    for inst in partial_matches:
+        results.append({
+            "instructor_id": inst.user_id,
+            "name": f"{inst.first_name} {inst.last_name}",
+            "title": inst.title,
+            "department_code": inst.department_code,
+            "office_location": inst.office_location,
+            "office_hours": inst.office_hours,
+            "score": 0.8  # fallback score
+        })
+
+    return jsonify(results)
 @api_bp.route('/instructors/<int:user_id>', methods=['GET'])
 def api_get_instructor_details(user_id):
     instructor_data = get_instructor_details_by_user_id(user_id)

@@ -3,6 +3,167 @@
 {% block title %}About - Edukate{% endblock %}
 
 {% block content %}
+<script>
+    let instructorNames = [];
+
+function selectInstructorFromButton() {
+    const input = document.getElementById('search-input');
+    if (instructorNames.length > 0) {
+        input.value = instructorNames[0]; // default first module for button select
+        handleSearch();
+    }
+}
+
+function selectInstructor(event, instructorName) {
+    event.preventDefault();
+    const input = document.getElementById('search-input');
+    input.value = instructorName;
+    handleSearch();
+    closeAutocomplete();
+}
+
+async function populateInstructorDropdown() {
+    const dropdownMenu = document.getElementById('instructor-dropdown-menu');
+    try {
+        const instructors = await apiFetch('/api/instructors');
+
+        if (instructors && instructors.length > 0) {
+            // Save names for autocomplete
+            instructorNames = instructors.map(i => i.name);
+
+            dropdownMenu.innerHTML = instructors.map(instructor => {
+                const safeName = instructor.name.replace(/'/g, "\\'");
+                return `<a class="dropdown-item" href="#" onclick="selectInstructor(event, '${safeName}')">${instructor.name}</a>`;
+            }).join('');
+        } else {
+            dropdownMenu.innerHTML = `<p class="dropdown-item text-muted">No instructors found.</p>`;
+        }
+    } catch (error) {
+        console.error("Failed to load instructors for dropdown:", error);
+        dropdownMenu.innerHTML = `<p class="dropdown-item text-danger">Error loading instructors.</p>`;
+    }
+}
+
+
+    // Function to load ALL modules from the SQL endpoint
+async function loadAllInstructors() {
+    try {
+        const instructors = await apiFetch('/api/instructors');
+        renderInstructors(instructors);
+    } catch (error) {
+            console.error("Failed to load all instructors:", error);
+            const container = document.getElementById('instructor-list-container');
+            container.innerHTML = '<p class="col-12 text-center text-danger">Error loading instructors. Please try again.</p>';
+    }
+}
+
+    // Function to handle the search button click
+async function handleSearch() {
+        console.log("Search initiated");
+        const searchInput = document.getElementById('search-input');
+        const query = searchInput.value;
+
+    if (!query) {
+        loadAllInstructors();
+        return;
+    }
+
+    try {
+        const results = await apiFetch(`/api/search?q=${query}`);
+        renderInstructors(results);
+        // --- NEW: Scroll to the results ---
+        document.getElementById('instructor-list-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (error) {
+        console.error(error);
+        document.getElementById('instructor-list-container').innerHTML =
+            '<p class="col-12 text-center text-danger">Search failed. Please try again.</p>';
+    }
+}
+
+function renderInstructors(instructors) {
+    const container = document.getElementById('instructor-list-container');
+    container.innerHTML = '';
+    if (!instructors || instructors.length === 0) {
+        container.innerHTML = '<p class="col-12 text-center h4 text-muted">No instructors found.</p>';
+        return;
+    }
+
+    let imgIndex = 1;
+    instructors.forEach(instructor => {
+        const instructorId = instructor.instructor_id;
+        const instructorName = instructor.name;
+        const instructorTitle=instructor.title;
+        const instructorDept = instructor.department_code;
+        const officeLoc = instructor.office_location ||'TBA';
+        const officeHour=instructor.office_hours||'TBA';
+        
+        container.innerHTML += `
+        <div class="col-lg-4 col-md-6 pb-4">
+            <div class="instructor-card position-relative d-block overflow-hidden mb-2 border rounded bg-dark text-white">
+                <img class="img-fluid" src="{{ url_for('static', filename='img/instructors-') }}${imgIndex}.jpg" alt="Instructor Image">
+
+                <div class="p-3">
+                    <h4 class="text-center">${instructorName}</h4>
+                    <p class="text-center mb-1"><strong>${instructorTitle}</strong></p>
+                    <p class="text-center mb-1">Dept: ${instructorDept}</p>
+                    <p class="text-center mb-1">Office: ${officeLoc}</p>
+                    <p class="text-center mb-1">Hours: ${officeHour}</p>
+                </div>
+            </div>
+        </div>
+        `;
+
+        imgIndex = (imgIndex % 6) + 1;
+    });
+} 
+
+function setupAutocomplete() {
+    const input = document.getElementById('search-input');
+    const list = document.getElementById('autocomplete-list');
+
+    input.addEventListener('input', () => {
+        const value = input.value.toLowerCase();
+        list.innerHTML = '';
+        if (!value) return;
+
+        const matches = instructorNames.filter(name => name.toLowerCase().includes(value));
+        matches.forEach(name => {
+            const a = document.createElement('a');
+            a.className = 'dropdown-item';
+            a.href = '#';
+            a.textContent = name;
+            a.addEventListener('click', e => selectInstructor(e, name));
+            list.appendChild(a);
+        });
+
+        list.classList.add('show');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (e.target !== input) closeAutocomplete();
+    });
+}
+
+function closeAutocomplete() {
+    const list = document.getElementById('autocomplete-list');
+    list.innerHTML = '';
+    list.classList.remove('show');
+}
+
+document.addEventListener('DOMContentLoaded', (event) => {
+//run setup functions
+    populateInstructorDropdown();
+    loadAllInstructors();
+    setupAutocomplete();
+
+    document.getElementById('search-button').addEventListener('click', handleSearch);
+    document.getElementById('instructor-button').addEventListener('click', selectInstructorFromButton);
+
+    document.getElementById('search-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter' && e.target.value.trim() !== '') handleSearch();
+    });
+});
+</script>
     <div class="jumbotron jumbotron-fluid page-header position-relative overlay-bottom" style="margin-bottom: 90px;">
         <div class="container text-center py-5">
             <h1 class="text-white display-1">About</h1>
@@ -12,68 +173,44 @@
                 <p class="m-0 text-uppercase">About</p>
             </div>
             <div class="mx-auto mb-5" style="width: 100%; max-width: 600px;">
-                <div class="input-group">
-                    <div class="input-group-prepend">
-                        <button class="btn btn-outline-light bg-white text-body px-4 dropdown-toggle" type="button" data-toggle="dropdown"
-                            aria-haspopup="true" aria-expanded="false">Modules</button>
-                        <div class="dropdown-menu">
-                            <a class="dropdown-item" href="#">Modules</a>
-                            <a class="dropdown-item" href="#">Instructor</a>
+            <div class="input-group">
+                        <!-- dropdown selection -->
+                        <div class="input-group-prepend dropdown">
+                            <button class="btn btn-outline-light bg-white text-body dropdown-toggle" type="button"
+                                    id="instructor-button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                Instructors
+                            </button>
+                            <div class="dropdown-menu" id="instructor-dropdown-menu">
+                                <a class="dropdown-item" href="#">Loading...</a>
+                            </div>
+                        </div>
+                        <!-- search bar -->
+                        <input type="text" id="search-input" class="form-control border-light"
+                            placeholder="Search instructors...">
+                        <div id="autocomplete-list" class="dropdown-menu w-100"></div>
+                        
+                        <div class="input-group-append">
+                            <button class="btn btn-secondary" id="search-button">Search</button>
                         </div>
                     </div>
-                    <input type="text" class="form-control border-light" style="padding: 30px 25px;" placeholder="Keyword">
-                    <div class="input-group-append">
-                        <button class="btn btn-secondary px-4 px-lg-5">Search</button>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
     <div class="container-fluid py-5">
-        <div class="container pt-5 pb-3">
+        <div class="container py-5">
             <div class="row mx-0 justify-content-center">
                 <div class="col-lg-8">
                     <div class="section-title text-center position-relative mb-5">
-                        <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Our Instructors</h6>
-                        <h1 class="display-4">Meet Our Certified & Experienced Instructors</h1>
+                        <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Our Modules</h6>
+                        <h1 class="display-4">All Available Modules</h1>
                     </div>
                 </div>
             </div>
-            <div class="row">
-                <div class="col-lg-3 col-md-6 pb-4">
-                    <div class="team-item">
-                        <img class="img-fluid mb-4" src="{{ url_for('static', filename='img/team-1.jpg') }}" alt="">
-                        <div class="bg-light p-4">
-                            <h4 class="mb-3">Ada Lovelace</h4>
-                            <p class="m-0">Web Developer</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6 pb-4">
-                    <div class="team-item">
-                        <img class="img-fluid mb-4" src="{{ url_for('static', filename='img/team-2.jpg') }}" alt="">
-                        <div class="bg-light p-4">
-                            <h4 class="mb-3">Alan Turing</h4>
-                            <p class="m-0">Web Developer</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6 pb-4">
-                    <div class="team-item">
-                        <img class="img-fluid mb-4" src="{{ url_for('static', filename='img/team-3.jpg') }}" alt="">
-                        <div class="bg-light p-4">
-                            <h4 class="mb-3">Valerie Angela</h4>
-                            <p class="m-0">Web Developer</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6 pb-4">
-                    <div class="team-item">
-                        <img class="img-fluid mb-4" src="{{ url_for('static', filename='img/team-4.jpg') }}" alt="">
-                        <div class="bg-light p-4">
-                            <h4 class="mb-3">Timmy Turner</h4>
-                            <p class="m-0">Web Developer</p>
-                        </div>
+
+            <div class="row" id="instructor-list-container">
+                <div class="col-12 text-center">
+                    <div class="spinner-border text-secondary" style="width: 3rem; height: 3rem;" role="status">
+                        <span class="sr-only">Loading modules...</span>
                     </div>
                 </div>
             </div>
