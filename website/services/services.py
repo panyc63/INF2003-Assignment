@@ -113,3 +113,6 @@ def get_instructor_modules(iid):
 
 def get_students_in_module(cid):
     return _active_service.get_students_in_module(cid)
+
+def get_instructors_by_name(query):
+    return _active_service.get_instructors_by_name(query)

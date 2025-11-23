@@ -9,7 +9,7 @@
 function selectInstructorFromButton() {
     const input = document.getElementById('search-input');
     if (instructorNames.length > 0) {
-        input.value = instructorNames[0]; // default first module for button select
+        //input.value = instructorNames[0]; // default first module for button select
         handleSearch();
     }
 }
@@ -59,20 +59,20 @@ async function loadAllInstructors() {
 
     // Function to handle the search button click
 async function handleSearch() {
-        console.log("Search initiated");
-        const searchInput = document.getElementById('search-input');
-        const query = searchInput.value;
+    console.log("Search initiated");
+    const searchInput = document.getElementById('search-input');
+    const query = searchInput.value.trim();
 
     if (!query) {
         loadAllInstructors();
         return;
     }
-
     try {
-        const results = await apiFetch(`/api/search?q=${query}`);
+        const results = await apiFetch(`/api/search_instructor?q=${encodeURIComponent(query)}`);
         renderInstructors(results);
-        // --- NEW: Scroll to the results ---
-        document.getElementById('instructor-list-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById('instructor-list-container')
+            .scrollIntoView({ behavior: 'smooth', block: 'start' });
+
     } catch (error) {
         console.error(error);
         document.getElementById('instructor-list-container').innerHTML =
@@ -100,14 +100,13 @@ function renderInstructors(instructors) {
         container.innerHTML += `
         <div class="col-lg-4 col-md-6 pb-4">
             <div class="instructor-card position-relative d-block overflow-hidden mb-2 border rounded bg-dark text-white">
-                <img class="img-fluid" src="{{ url_for('static', filename='img/instructors-') }}${imgIndex}.jpg" alt="Instructor Image">
+                <img class="img-fluid" src="{{ url_for('static', filename='img/team-') }}${imgIndex}.jpg" alt="Instructor Image">
 
                 <div class="p-3">
                     <h4 class="text-center">${instructorName}</h4>
+                    <p class="text-center mb-1"><strong>${instructorName}</strong></p>
                     <p class="text-center mb-1"><strong>${instructorTitle}</strong></p>
                     <p class="text-center mb-1">Dept: ${instructorDept}</p>
-                    <p class="text-center mb-1">Office: ${officeLoc}</p>
-                    <p class="text-center mb-1">Hours: ${officeHour}</p>
                 </div>
             </div>
         </div>
