@@ -68,7 +68,7 @@ async function handleSearch() {
         return;
     }
     try {
-        const results = await apiFetch(`/api/search_instructor?q=${encodeURIComponent(query)}`);
+        const results = await apiFetch(`/api/search_instructors?q=${encodeURIComponent(query)}`);
         renderInstructors(results);
         document.getElementById('instructor-list-container')
             .scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -88,9 +88,9 @@ function renderInstructors(instructors) {
         return;
     }
 
-    let imgIndex = 1;
+    //let imgIndex = 1;
     instructors.forEach(instructor => {
-        const instructorId = instructor.instructor_id;
+        const instructorId = instructor.id;
         const instructorName = instructor.name;
         const instructorTitle=instructor.title;
         const instructorDept = instructor.department_code;
@@ -100,7 +100,7 @@ function renderInstructors(instructors) {
         container.innerHTML += `
         <div class="col-lg-4 col-md-6 pb-4">
             <div class="instructor-card position-relative d-block overflow-hidden mb-2 border rounded bg-dark text-white">
-                <img class="img-fluid" src="{{ url_for('static', filename='img/team-') }}${imgIndex}.jpg" alt="Instructor Image">
+                <img class="img-fluid" src="{{ url_for('static', filename='img/team-') }}${instructorId}.jpg" alt="Instructor Image">
 
                 <div class="p-3">
                     <h4 class="text-center">${instructorName}</h4>
@@ -112,7 +112,7 @@ function renderInstructors(instructors) {
         </div>
         `;
 
-        imgIndex = (imgIndex % 6) + 1;
+        //imgIndex = (imgIndex % 6) + 1;
     });
 } 
 

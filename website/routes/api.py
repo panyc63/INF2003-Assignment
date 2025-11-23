@@ -241,9 +241,10 @@ def search_instructors():
         return jsonify({"error": "No query provided"}), 400
 
     try:
+        # Get from active database (Mongo or SQL)
         instructors = get_instructors_by_name(query)
 
-        # Optionally, add a default score for ranking (similar to modules)
+        # Add a default score for uniformity
         for inst in instructors:
             inst['score'] = 1.0
 
@@ -251,6 +252,7 @@ def search_instructors():
     except Exception as e:
         print(f"Error searching instructors: {e}")
         return jsonify({"error": str(e)}), 500
+
 
 @api_bp.route('/instructors/<int:user_id>', methods=['GET'])
 def api_get_instructor_details(user_id):

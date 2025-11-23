@@ -323,16 +323,24 @@ def get_students_in_module(cid):
     return [{"id": r.student_id, "name": f"{r.first_name} {r.last_name}", "major": r.major, "university_id": r.university_id} for r in rows]
 
 def get_instructors_by_name(query: str) -> List[Dict[str, Any]]:
-    query = f"%{query}%"
+    """Search instructors by name (SQL version) with partial matching."""
+    query_like = f"%{query}%"
     sql = text("""
         SELECT i.instructor_id, u.first_name, u.last_name, i.department_code, i.title
         FROM instructors i
         JOIN users u ON i.instructor_id = u.user_id
-        WHERE u.first_name LIKE :q OR u.last_name LIKE :q OR CONCAT(u.first_name, ' ', u.last_name) LIKE :q
+        WHERE u.first_name LIKE :q
+           OR u.last_name LIKE :q
+           OR CONCAT(u.first_name, ' ', u.last_name) LIKE :q
     """)
-    rows = db.session.execute(sql, {"q": query}).all()
+    rows = db.session.execute(sql, {"q": query_like}).all()
     return [
-        {"id": r.instructor_id, "name": f"{r.first_name} {r.last_name}", "department_code": r.department_code, "title": r.title}
+        {
+            "id": r.instructor_id,
+            "name": f"{r.first_name} {r.last_name}",
+            "department_code": r.department_code,
+            "title": r.title
+        }
         for r in rows
     ]
 
