@@ -346,7 +346,6 @@ def get_instructors_by_name_and_dept(query: str) -> List[Dict[str, Any]]:
     """Search instructors by name (SQL version) with dept limit."""
     dept_constr, name_part = map(str.strip, query.split(':', 1))
     query_like = f"%{name_part}%"
-
     sql = text("""
         SELECT i.instructor_id, u.first_name, u.last_name, i.department_code, i.title
         FROM instructors i

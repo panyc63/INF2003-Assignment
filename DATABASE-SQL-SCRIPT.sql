@@ -217,6 +217,7 @@ VALUES
 (2, 'I-002', 'instructor2@ucms.edu', 'hashed_pass_2', 'Ada', 'Lovelace', 'instructor', NOW(), 1),
 (3, 'I-003', 'instructor3@ucms.edu', 'hashed_pass_3', 'Grace', 'Hopper', 'instructor', NOW(), 1),
 (4, 'I-004', 'instructor4@ucms.edu', 'hashed_pass_4', 'Siti', 'Nurhaliza', 'instructor', NOW(), 1),
+(5, 'I-005', 'instructor5@ucms.edu', 'hashed_pass_5', 'Azure', 'Bluet', 'instructor', NOW(), 1),
 (1001, 'S2401001A', 'alex.student@ucms.edu', 'hashed_pass_s1', 'Alex', 'Cross', 'student', '2024-08-20 10:00:00', 1);
 
 -- Create Instructor Profiles
@@ -225,7 +226,8 @@ VALUES
 (1, 'CS', 'SIT@Dover, C-01-01', 'Mon/Wed 10-12', 'Professor'),
 (2, 'INF', 'SIT@Dover, D-05-01', 'Mon 10:00-12:00', 'Associate Professor'),
 (3, 'BUS', 'SIT@Dover, B-02-05', 'Wed 14:00-16:00', 'Lecturer'),
-(4, 'GEN', 'SIT@Dover, A-04-01', 'Fri 09:00-11:00', 'Lecturer');
+(4, 'GEN', 'SIT@Dover, A-04-01', 'Fri 09:00-11:00', 'Lecturer'),
+(5, 'INF', 'SIT@Dover, D-04-01', 'Wed 09:00-11:00', 'Mascot');
 
 -- Create Student Profile (for Alex)
 INSERT INTO students (student_id, enrollment_year, major, expected_graduation, gpa, current_standing)
