@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}About - Edukate{% endblock %}
+{% block title %}About Us - Edukate{% endblock %}
 
 {% block content %}
 <script>
@@ -88,7 +88,6 @@ function renderInstructors(instructors) {
         return;
     }
 
-    //let imgIndex = 1;
     instructors.forEach(instructor => {
         const instructorId = instructor.id;
         const instructorName = instructor.name;
@@ -100,7 +99,7 @@ function renderInstructors(instructors) {
         container.innerHTML += `
         <div class="col-lg-4 col-md-6 pb-4">
             <div class="instructor-card position-relative d-block overflow-hidden mb-2 border rounded bg-dark text-white">
-                <img class="img-fluid" src="{{ url_for('static', filename='img/team-') }}${instructorId}.jpg" alt="Instructor Image">
+                <img class="img-fluid" src="{{ url_for('static', filename='img/team-') }}${instructorId}.jpg" alt="${instructorName}">
 
                 <div class="p-3">
                     <h4 class="text-center">${instructorName}</h4>
@@ -112,7 +111,6 @@ function renderInstructors(instructors) {
         </div>
         `;
 
-        //imgIndex = (imgIndex % 6) + 1;
     });
 } 
 
@@ -165,11 +163,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
 </script>
     <div class="jumbotron jumbotron-fluid page-header position-relative overlay-bottom" style="margin-bottom: 90px;">
         <div class="container text-center py-5">
-            <h1 class="text-white display-1">About</h1>
+            <h1 class="text-white display-1">About Us</h1>
             <div class="d-inline-flex text-white mb-5">
                 <p class="m-0 text-uppercase"><a class="text-white" href="/">Home</a></p>
                 <i class="fa fa-angle-double-right pt-1 px-3"></i>
-                <p class="m-0 text-uppercase">About</p>
+                <p class="m-0 text-uppercase">About Us</p>
             </div>
             <div class="mx-auto mb-5" style="width: 100%; max-width: 600px;">
             <div class="input-group">
