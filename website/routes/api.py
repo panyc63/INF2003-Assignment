@@ -241,12 +241,10 @@ def search_instructors():
         return jsonify({"error": "No query provided"}), 400
 
     try:
+        
         # Get from active database (Mongo or SQL)
         instructors = get_instructors_by_name(query)
 
-        # Add a default score for uniformity
-        for inst in instructors:
-            inst['score'] = 1.0
 
         return jsonify(instructors)
     except Exception as e:

@@ -68,7 +68,14 @@ async function handleSearch() {
         return;
     }
     try {
-        const results = await apiFetch(`/api/search_instructors?q=${encodeURIComponent(query)}`);
+        if (query.includes(':')){
+            const splitQuery=query.split(':');
+            const results = await apiFetch(`/api/search_instructors?q=${encodeURIComponent(query)}`);
+        }
+        else{
+            const results = await apiFetch(`/api/search_instructors?q=${encodeURIComponent(query)}`);
+        }
+        
         renderInstructors(results);
         document.getElementById('instructor-list-container')
             .scrollIntoView({ behavior: 'smooth', block: 'start' });
