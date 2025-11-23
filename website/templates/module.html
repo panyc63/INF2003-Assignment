@@ -3,141 +3,171 @@
 {% block title %}Modules - Edukate{% endblock %}
 
 {% block content %}
+
 <script>
-    // NEW: Function to handle when a user clicks a dropdown item
-    function selectModule(event, moduleName) {
-        event.preventDefault();
-        const searchInput = document.getElementById('search-input');
-        searchInput.value = moduleName;
-        const dropdownButton = document.querySelector('[data-toggle="dropdown"]');
-        dropdownButton.textContent = moduleName;
+let moduleNames = [];
+
+function selectModuleFromButton() {
+    const input = document.getElementById('search-input');
+    if (moduleNames.length > 0) {
+        input.value = moduleNames[0]; // default first module for button select
         handleSearch();
     }
+}
 
-    // This function populates the dropdown
-    async function populateModuleDropdown() {
-        const dropdownMenu = document.getElementById('module-dropdown-menu');
-        let listContent = '';
-        try {
-            const modules = await apiFetch('/api/modules');
-            if (modules && modules.length > 0) {
-                listContent = modules.map(module => {
-                    const safeName = module.module_name.replace(/'/g, "\\'");
-                    return `<a class="dropdown-item" href="#" onclick="selectModule(event, '${safeName}')">${module.module_name}</a>`
-                }).join('');
-            } else {
-                listContent = `<p class="dropdown-item text-muted">No modules found.</p>`;
-            }
-        } catch (error) {
-            console.error("Failed to load modules for dropdown:", error);
-            listContent = `<p class="dropdown-item text-danger">Error loading modules.</p>`;
+function selectModule(event, moduleName) {
+    event.preventDefault();
+    const input = document.getElementById('search-input');
+    input.value = moduleName;
+    handleSearch();
+    closeAutocomplete();
+}
+
+async function populateModuleDropdown() {
+    const dropdownMenu = document.getElementById('module-dropdown-menu');
+    try {
+        const modules = await apiFetch('/api/modules');
+
+        if (modules && modules.length > 0) {
+            // Save names for autocomplete
+            moduleNames = modules.map(m => m.module_name);
+
+            dropdownMenu.innerHTML = modules.map(module => {
+                const safeName = module.module_name.replace(/'/g, "\\'");
+                return `<a class="dropdown-item" href="#" onclick="selectModule(event, '${safeName}')">${module.module_name}</a>`;
+            }).join('');
+        } else {
+            dropdownMenu.innerHTML = `<p class="dropdown-item text-muted">No modules found.</p>`;
         }
-        dropdownMenu.innerHTML = listContent;
+    } catch (error) {
+        console.error("Failed to load modules for dropdown:", error);
+        dropdownMenu.innerHTML = `<p class="dropdown-item text-danger">Error loading modules.</p>`;
     }
+}
+
 
     // Function to load ALL modules from the SQL endpoint
-    async function loadAllModules() {
-        try {
-            const modules = await apiFetch('/api/modules');
-            renderModules(modules);
-
-
-        } catch (error) {
+async function loadAllModules() {
+    try {
+        const modules = await apiFetch('/api/modules');
+        renderModules(modules);
+    } catch (error) {
             console.error("Failed to load all modules:", error);
             const container = document.getElementById('module-list-container');
             container.innerHTML = '<p class="col-12 text-center text-danger">Error loading modules. Please try again.</p>';
-        }
     }
+}
 
     // Function to handle the search button click
-    async function handleSearch() {
+async function handleSearch() {
         console.log("Search initiated");
         const searchInput = document.getElementById('search-input');
         const query = searchInput.value;
 
-        if (!query) {
-            loadAllModules();
-            return;
-        }
-
-        try {
-            const results = await apiFetch(`/api/search?q=${query}`);
-            renderModules(results);
-
-            // --- NEW: Scroll to the results ---
-            document.getElementById('module-list-container').scrollIntoView({ behavior: 'smooth',block: 'start'});
-
-        } catch (error) {
-            console.error("Search failed:", error);
-            const container = document.getElementById('module-list-container');
-            container.innerHTML = '<p class="col-12 text-center text-danger">Search failed. Please try again.</p>';
-        }
-    }
-
-    // Helper function to render module cards into the container
-    function renderModules(modules) {
-        const container = document.getElementById('module-list-container');
-        container.innerHTML = '';
-
-        if (!modules || modules.length === 0) {
-            container.innerHTML = '<p class="col-12 text-center h4 text-muted">No modules found.</p>';
-            return;
-        }
-
-        let imgIndex = 1;
-
-        modules.forEach(module => {
-            const moduleId = module.module_id;
-            const moduleName = module.module_name || module.title;
-            const instructor = module.instructor_name || 'TBA';
-
-            const rating = module.score ? (module.score * 5).toFixed(1) : '4.5';
-            const ratingCount = module.score ? '(Search)' : '(250)';
-
-            const moduleHtml = `
-                <div class="col-lg-4 col-md-6 pb-4">
-                    <a class="modules-list-item position-relative d-block overflow-hidden mb-2" 
-                       href="${'{{ url_for("views.module_detail", module_id="TEMP") }}'.replace('TEMP', moduleId)}">
-                        
-                        <img class="img-fluid" src="{{ url_for('static', filename='img/modules-') }}${imgIndex}.jpg" alt="Module Image">
-                        
-                        <div class="modules-text">
-                            <h4 class="text-center text-white px-3">${moduleId} ${moduleName}</h4>
-                            <div class="border-top w-100 mt-3">
-                                <div class="d-flex justify-content-between p-4">
-                                    <span class="text-white"><i class="fa fa-user mr-2"></i>${instructor}</span>
-                                    <span class="text-white"><i class="fa fa-star mr-2"></i>${rating}
-                                        <small>${ratingCount}</small>
-                                    </span>
-                                D</div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-            `;
-
-            container.innerHTML += moduleHtml;
-            imgIndex = (imgIndex % 6) + 1;
-        });
-    }
-
-    // Run all setup functions when the page is loaded
-    document.addEventListener('DOMContentLoaded', (event) => {
-        populateModuleDropdown();
+    if (!query) {
         loadAllModules();
+        return;
+    }
 
-        const searchButton = document.getElementById('search-button');
-        searchButton.addEventListener('click', handleSearch);
+    try {
+        const results = await apiFetch(`/api/search?q=${query}`);
+        renderModules(results);
+        // --- NEW: Scroll to the results ---
+        document.getElementById('module-list-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (error) {
+        console.error(error);
+        document.getElementById('module-list-container').innerHTML =
+            '<p class="col-12 text-center text-danger">Search failed. Please try again.</p>';
+    }
+}
 
-        const searchInput = document.getElementById('search-input');
+function renderModules(modules) {
+    const container = document.getElementById('module-list-container');
+    container.innerHTML = '';
+    if (!modules || modules.length === 0) {
+        container.innerHTML = '<p class="col-12 text-center h4 text-muted">No modules found.</p>';
+        return;
+    }
 
-        searchInput.addEventListener('keydown', (e) => {
-            // Check if the key is 'Enter' AND if the input has some text
-            if (e.key === 'Enter' && searchInput.value.trim() !== '') {
-                handleSearch();
-            }
-        });
+    let imgIndex = 1;
+    modules.forEach(module => {
+        const moduleId = module.module_id;
+        const moduleName = module.module_name || module.title;
+        const instructor = module.instructor_name || 'TBA';
+        const rating = module.score ? (module.score * 5).toFixed(1) : '4.5';
+        const ratingCount = module.score ? '(Search)' : '(250)';
+
+        container.innerHTML += `
+        <div class="col-lg-4 col-md-6 pb-4">
+            <a class="modules-list-item position-relative d-block overflow-hidden mb-2" 
+                href="${'{{ url_for("views.module_detail", module_id="TEMP") }}'.replace('TEMP', moduleId)}">
+                
+                <img class="img-fluid" src="{{ url_for('static', filename='img/modules-') }}${imgIndex}.jpg">
+                
+                <div class="modules-text">
+                    <h4 class="text-center text-white px-3">${moduleId} ${moduleName}</h4>
+                    <div class="border-top w-100 mt-3">
+                        <div class="d-flex justify-content-between p-4">
+                            <span class="text-white"><i class="fa fa-user mr-2"></i>${instructor}</span>
+                            <span class="text-white"><i class="fa fa-star mr-2"></i>${rating}
+                                <small>${ratingCount}</small>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        `;
+        imgIndex = (imgIndex % 6) + 1;
     });
+}
+
+function setupAutocomplete() {
+    const input = document.getElementById('search-input');
+    const list = document.getElementById('autocomplete-list');
+
+    input.addEventListener('input', () => {
+        const value = input.value.toLowerCase();
+        list.innerHTML = '';
+        if (!value) return;
+
+        const matches = moduleNames.filter(name => name.toLowerCase().includes(value));
+        matches.forEach(name => {
+            const a = document.createElement('a');
+            a.className = 'dropdown-item';
+            a.href = '#';
+            a.textContent = name;
+            a.addEventListener('click', e => selectModule(e, name));
+            list.appendChild(a);
+        });
+
+        list.classList.add('show');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (e.target !== input) closeAutocomplete();
+    });
+}
+
+function closeAutocomplete() {
+    const list = document.getElementById('autocomplete-list');
+    list.innerHTML = '';
+    list.classList.remove('show');
+}
+
+document.addEventListener('DOMContentLoaded', (event) => {
+//run setup functions
+    populateModuleDropdown();
+    loadAllModules();
+    setupAutocomplete();
+
+    document.getElementById('search-button').addEventListener('click', handleSearch);
+    document.getElementById('module-button').addEventListener('click', selectModuleFromButton);
+
+    document.getElementById('search-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter' && e.target.value.trim() !== '') handleSearch();
+    });
+});
 </script>
 
 <div class="jumbotron jumbotron-fluid page-header position-relative overlay-bottom" style="margin-bottom: 90px;">
@@ -148,21 +178,29 @@
             <i class="fa fa-angle-double-right pt-1 px-3"></i>
             <p class="m-0 text-uppercase">Modules</p>
         </div>
+
         <div class="mx-auto mb-5" style="width: 100%; max-width: 600px;">
-            <div class="input-group">
-                <div class="input-group-prepend">
-                    <button class="btn btn-outline-light bg-white text-body px-4 dropdown-toggle" type="button"
-                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Modules</button>
-                    <div class="dropdown-menu" id="module-dropdown-menu">
-                        <a class="dropdown-item" href="#">Loading...</a>
-                    </div>
-                </div>
-                <input type="text" id="search-input" class="form-control border-light" style="padding: 30px 25px;"
-                    placeholder="Search for 'database' or 'programming'...">
-                <div class="input-group-append">
-                    <button class="btn btn-secondary px-4 px-lg-5" id="search-button">Search</button>
+        <div class="input-group">
+            <!-- dropdown selection -->
+            <div class="input-group-prepend dropdown">
+                <button class="btn btn-outline-light bg-white text-body dropdown-toggle" type="button"
+                        id="module-button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    Modules
+                </button>
+                <div class="dropdown-menu" id="module-dropdown-menu">
+                    <a class="dropdown-item" href="#">Loading...</a>
                 </div>
             </div>
+            <!-- search bar -->
+            <input type="text" id="search-input" class="form-control border-light"
+                placeholder="Search modules...">
+            <div id="autocomplete-list" class="dropdown-menu w-100"></div>
+            
+            <div class="input-group-append">
+                <button class="btn btn-secondary" id="search-button">Search</button>
+            </div>
+        </div>
+
         </div>
     </div>
 </div>
@@ -180,11 +218,12 @@
 
         <div class="row" id="module-list-container">
             <div class="col-12 text-center">
-                <div class="spinner-border text-secondary" role="status" style="width: 3rem; height: 3rem;">
+                <div class="spinner-border text-secondary" style="width: 3rem; height: 3rem;" role="status">
                     <span class="sr-only">Loading modules...</span>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
 {% endblock %}
