@@ -13,9 +13,9 @@ def get_module_data():
             c.*, 
             u.first_name AS instructor_first, 
             u.last_name AS instructor_last,
-            (SELECT GROUP_CONCAT(pr.requires_course_id SEPARATOR ', ') 
+            (SELECT GROUP_CONCAT(pr.requires_module_id SEPARATOR ', ') 
              FROM prerequisites pr 
-             WHERE pr.course_id = c.module_id) AS prereqs_list
+             WHERE pr.module_id = c.module_id) AS prereqs_list
         FROM modules c
         LEFT JOIN instructors i ON c.instructor_id = i.instructor_id
         LEFT JOIN users u ON i.instructor_id = u.user_id
@@ -49,9 +49,9 @@ def get_module_details_by_id(module_id, student_id=None):
             c.*, 
             u.first_name AS instructor_first, 
             u.last_name AS instructor_last,
-            (SELECT GROUP_CONCAT(pr.requires_course_id SEPARATOR ', ') 
+            (SELECT GROUP_CONCAT(pr.requires_module_id SEPARATOR ', ') 
              FROM prerequisites pr 
-             WHERE pr.course_id = c.module_id) AS prereqs_list
+             WHERE pr.module_id = c.module_id) AS prereqs_list
         FROM modules c
         LEFT JOIN instructors i ON c.instructor_id = i.instructor_id
         LEFT JOIN users u ON i.instructor_id = u.user_id

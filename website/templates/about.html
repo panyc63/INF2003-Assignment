@@ -6,99 +6,99 @@
 <script>
     let instructorNames = [];
 
-function selectInstructorFromButton() {
-    const input = document.getElementById('search-input');
-    if (instructorNames.length > 0) {
-        //input.value = instructorNames[0]; // default first module for button select
-        handleSearch();
-    }
-}
-
-function selectInstructor(event, instructorName) {
-    event.preventDefault();
-    const input = document.getElementById('search-input');
-    input.value = instructorName;
-    handleSearch();
-    closeAutocomplete();
-}
-
-async function populateInstructorDropdown() {
-    const dropdownMenu = document.getElementById('instructor-dropdown-menu');
-    try {
-        const instructors = await apiFetch('/api/instructors');
-
-        if (instructors && instructors.length > 0) {
-            // Save names for autocomplete
-            instructorNames = instructors.map(i => i.name);
-
-            dropdownMenu.innerHTML = instructors.map(instructor => {
-                const safeName = instructor.name.replace(/'/g, "\\'");
-                return `<a class="dropdown-item" href="#" onclick="selectInstructor(event, '${safeName}')">${instructor.name}</a>`;
-            }).join('');
-        } else {
-            dropdownMenu.innerHTML = `<p class="dropdown-item text-muted">No instructors found.</p>`;
+    function selectInstructorFromButton() {
+        const input = document.getElementById('search-input');
+        if (instructorNames.length > 0) {
+            //input.value = instructorNames[0]; // default first module for button select
+            handleSearch();
         }
-    } catch (error) {
-        console.error("Failed to load instructors for dropdown:", error);
-        dropdownMenu.innerHTML = `<p class="dropdown-item text-danger">Error loading instructors.</p>`;
     }
-}
+
+    function selectInstructor(event, instructorName) {
+        event.preventDefault();
+        const input = document.getElementById('search-input');
+        input.value = instructorName;
+        handleSearch();
+        closeAutocomplete();
+    }
+
+    async function populateInstructorDropdown() {
+        const dropdownMenu = document.getElementById('instructor-dropdown-menu');
+        try {
+            const instructors = await apiFetch('/api/instructors');
+
+            if (instructors && instructors.length > 0) {
+                // Save names for autocomplete
+                instructorNames = instructors.map(i => i.name);
+
+                dropdownMenu.innerHTML = instructors.map(instructor => {
+                    const safeName = instructor.name.replace(/'/g, "\\'");
+                    return `<a class="dropdown-item" href="#" onclick="selectInstructor(event, '${safeName}')">${instructor.name}</a>`;
+                }).join('');
+            } else {
+                dropdownMenu.innerHTML = `<p class="dropdown-item text-muted">No instructors found.</p>`;
+            }
+        } catch (error) {
+            console.error("Failed to load instructors for dropdown:", error);
+            dropdownMenu.innerHTML = `<p class="dropdown-item text-danger">Error loading instructors.</p>`;
+        }
+    }
 
 
     // Function to load ALL modules from the SQL endpoint
-async function loadAllInstructors() {
-    try {
-        const instructors = await apiFetch('/api/instructors');
-        renderInstructors(instructors);
-    } catch (error) {
+    async function loadAllInstructors() {
+        try {
+            const instructors = await apiFetch('/api/instructors');
+            renderInstructors(instructors);
+        } catch (error) {
             console.error("Failed to load all instructors:", error);
             const container = document.getElementById('instructor-list-container');
             container.innerHTML = '<p class="col-12 text-center text-danger">Error loading instructors. Please try again.</p>';
+        }
     }
-}
 
     // Function to handle the search button click
-async function handleSearch() {
-    console.log("Search initiated");
-    const searchInput = document.getElementById('search-input');
-    const query = searchInput.value.trim();
+    async function handleSearch() {
+        console.log("Search initiated");
+        const searchInput = document.getElementById('search-input');
+        const query = searchInput.value.trim();
 
-    if (!query) {
-        loadAllInstructors();
-        return;
-    }
-    try {
-        const results = await apiFetch(`/api/search_instructors?q=${encodeURIComponent(query)}`);
-        
-        
-        renderInstructors(results);
-        document.getElementById('instructor-list-container')
-            .scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (!query) {
+            loadAllInstructors();
+            return;
+        }
+        try {
+            const results = await apiFetch(`/api/search_instructors?q=${encodeURIComponent(query)}`);
 
-    } catch (error) {
-        console.error(error);
-        document.getElementById('instructor-list-container').innerHTML =
-            '<p class="col-12 text-center text-danger">Search failed. Please try again.</p>';
-    }
-}
 
-function renderInstructors(instructors) {
-    const container = document.getElementById('instructor-list-container');
-    container.innerHTML = '';
-    if (!instructors || instructors.length === 0) {
-        container.innerHTML = '<p class="col-12 text-center h4 text-muted">No instructors found.</p>';
-        return;
+            renderInstructors(results);
+            document.getElementById('instructor-list-container')
+                .scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        } catch (error) {
+            console.error(error);
+            document.getElementById('instructor-list-container').innerHTML =
+                '<p class="col-12 text-center text-danger">Search failed. Please try again.</p>';
+        }
     }
 
-    instructors.forEach(instructor => {
-        const instructorId = instructor.id;
-        const instructorName = instructor.name;
-        const instructorTitle=instructor.title;
-        const instructorDept = instructor.department_code;
-        const officeLoc = instructor.office_location ||'TBA';
-        const officeHour=instructor.office_hours||'TBA';
-        
-        container.innerHTML += `
+    function renderInstructors(instructors) {
+        const container = document.getElementById('instructor-list-container');
+        container.innerHTML = '';
+        if (!instructors || instructors.length === 0) {
+            container.innerHTML = '<p class="col-12 text-center h4 text-muted">No instructors found.</p>';
+            return;
+        }
+
+        instructors.forEach(instructor => {
+            const instructorId = instructor.id;
+            const instructorName = instructor.name;
+            const instructorTitle = instructor.title;
+            const instructorDept = instructor.department_code;
+            const officeLoc = instructor.office_location || 'TBA';
+            const officeHour = instructor.office_hours || 'TBA';
+
+            container.innerHTML += `
         <div class="col-lg-4 col-md-6 pb-4">
             <div class="instructor-card position-relative d-block overflow-hidden mb-2 border rounded bg-dark text-white">
                 <img class="img-fluid" src="{{ url_for('static', filename='img/team-') }}${instructorId}.jpg" alt="${instructorName}">
@@ -113,106 +113,106 @@ function renderInstructors(instructors) {
         </div>
         `;
 
-    });
-} 
+        });
+    }
 
-function setupAutocomplete() {
-    const input = document.getElementById('search-input');
-    const list = document.getElementById('autocomplete-list');
+    function setupAutocomplete() {
+        const input = document.getElementById('search-input');
+        const list = document.getElementById('autocomplete-list');
 
-    input.addEventListener('input', () => {
-        const value = input.value.toLowerCase();
-        list.innerHTML = '';
-        if (!value) return;
+        input.addEventListener('input', () => {
+            const value = input.value.toLowerCase();
+            list.innerHTML = '';
+            if (!value) return;
 
-        const matches = instructorNames.filter(name => name.toLowerCase().includes(value));
-        matches.forEach(name => {
-            const a = document.createElement('a');
-            a.className = 'dropdown-item';
-            a.href = '#';
-            a.textContent = name;
-            a.addEventListener('click', e => selectInstructor(e, name));
-            list.appendChild(a);
+            const matches = instructorNames.filter(name => name.toLowerCase().includes(value));
+            matches.forEach(name => {
+                const a = document.createElement('a');
+                a.className = 'dropdown-item';
+                a.href = '#';
+                a.textContent = name;
+                a.addEventListener('click', e => selectInstructor(e, name));
+                list.appendChild(a);
+            });
+
+            list.classList.add('show');
         });
 
-        list.classList.add('show');
+        document.addEventListener('click', (e) => {
+            if (e.target !== input) closeAutocomplete();
+        });
+    }
+
+    function closeAutocomplete() {
+        const list = document.getElementById('autocomplete-list');
+        list.innerHTML = '';
+        list.classList.remove('show');
+    }
+
+    document.addEventListener('DOMContentLoaded', (event) => {
+        //run setup functions
+        populateInstructorDropdown();
+        loadAllInstructors();
+        setupAutocomplete();
+
+        document.getElementById('search-button').addEventListener('click', handleSearch);
+        document.getElementById('instructor-button').addEventListener('click', selectInstructorFromButton);
+
+        document.getElementById('search-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter' && e.target.value.trim() !== '') handleSearch();
+        });
     });
-
-    document.addEventListener('click', (e) => {
-        if (e.target !== input) closeAutocomplete();
-    });
-}
-
-function closeAutocomplete() {
-    const list = document.getElementById('autocomplete-list');
-    list.innerHTML = '';
-    list.classList.remove('show');
-}
-
-document.addEventListener('DOMContentLoaded', (event) => {
-//run setup functions
-    populateInstructorDropdown();
-    loadAllInstructors();
-    setupAutocomplete();
-
-    document.getElementById('search-button').addEventListener('click', handleSearch);
-    document.getElementById('instructor-button').addEventListener('click', selectInstructorFromButton);
-
-    document.getElementById('search-input').addEventListener('keydown', e => {
-        if (e.key === 'Enter' && e.target.value.trim() !== '') handleSearch();
-    });
-});
 </script>
-    <div class="jumbotron jumbotron-fluid page-header position-relative overlay-bottom" style="margin-bottom: 90px;">
-        <div class="container text-center py-5">
-            <h1 class="text-white display-1">About Us</h1>
-            <div class="d-inline-flex text-white mb-5">
-                <p class="m-0 text-uppercase"><a class="text-white" href="/">Home</a></p>
-                <i class="fa fa-angle-double-right pt-1 px-3"></i>
-                <p class="m-0 text-uppercase">About Us</p>
-            </div>
-            <div class="mx-auto mb-5" style="width: 100%; max-width: 600px;">
+<div class="jumbotron jumbotron-fluid about-header position-relative overlay-bottom" style="margin-bottom: 90px;">
+    <div class="container text-center py-5">
+        <h1 class="text-white display-1">About Us</h1>
+        <div class="d-inline-flex text-white mb-5">
+            <p class="m-0 text-uppercase"><a class="text-white" href="/">Home</a></p>
+            <i class="fa fa-angle-double-right pt-1 px-3"></i>
+            <p class="m-0 text-uppercase">About Us</p>
+        </div>
+        <div class="mx-auto mb-5" style="width: 100%; max-width: 600px;">
             <div class="input-group">
-                        <!-- dropdown selection -->
-                        <div class="input-group-prepend dropdown">
-                            <button class="btn btn-outline-light bg-white text-body dropdown-toggle" type="button"
-                                    id="instructor-button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                Instructors
-                            </button>
-                            <div class="dropdown-menu" id="instructor-dropdown-menu">
-                                <a class="dropdown-item" href="#">Loading...</a>
-                            </div>
-                        </div>
-                        <!-- search bar -->
-                        <input type="text" id="search-input" class="form-control border-light"
-                            placeholder="Search instructors...">
-                        <div id="autocomplete-list" class="dropdown-menu w-100"></div>
-                        
-                        <div class="input-group-append">
-                            <button class="btn btn-secondary" id="search-button">Search</button>
-                        </div>
-                    </div>
-            </div>
-        </div>
-    </div>
-    <div class="container-fluid py-5">
-        <div class="container py-5">
-            <div class="row mx-0 justify-content-center">
-                <div class="col-lg-8">
-                    <div class="section-title text-center position-relative mb-5">
-                        <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Our Instructors</h6>
-                        <h1 class="display-4">All Employed Instructors</h1>
+                <!-- dropdown selection -->
+                <div class="input-group-prepend dropdown">
+                    <button class="btn btn-outline-light bg-white text-body dropdown-toggle" type="button"
+                        id="instructor-button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Instructors
+                    </button>
+                    <div class="dropdown-menu" id="instructor-dropdown-menu">
+                        <a class="dropdown-item" href="#">Loading...</a>
                     </div>
                 </div>
-            </div>
+                <!-- search bar -->
+                <input type="text" id="search-input" class="form-control border-light"
+                    placeholder="Search instructors...">
+                <div id="autocomplete-list" class="dropdown-menu w-100"></div>
 
-            <div class="row" id="instructor-list-container">
-                <div class="col-12 text-center">
-                    <div class="spinner-border text-secondary" style="width: 3rem; height: 3rem;" role="status">
-                        <span class="sr-only">Loading...</span>
-                    </div>
+                <div class="input-group-append">
+                    <button class="btn btn-secondary" id="search-button">Search</button>
                 </div>
             </div>
         </div>
     </div>
-    {% endblock %}
+</div>
+<div class="container-fluid py-5">
+    <div class="container py-5">
+        <div class="row mx-0 justify-content-center">
+            <div class="col-lg-8">
+                <div class="section-title text-center position-relative mb-5">
+                    <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Our Instructors</h6>
+                    <h1 class="display-4">All Employed Instructors</h1>
+                </div>
+            </div>
+        </div>
+
+        <div class="row" id="instructor-list-container">
+            <div class="col-12 text-center">
+                <div class="spinner-border text-secondary" style="width: 3rem; height: 3rem;" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

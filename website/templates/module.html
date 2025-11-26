@@ -5,104 +5,129 @@
 {% block content %}
 
 <script>
-let moduleNames = [];
+    // global vars
+    let allModulesData = [];
+    let moduleNames = [];
+    let currentPage = 1;
+    const itemsPerPage = 6;
 
-function selectModuleFromButton() {
-    const input = document.getElementById('search-input');
-    if (moduleNames.length > 0) {
-        input.value = moduleNames[0]; // default first module for button select
-        handleSearch();
-    }
-}
-
-function selectModule(event, moduleName) {
-    event.preventDefault();
-    const input = document.getElementById('search-input');
-    input.value = moduleName;
-    handleSearch();
-    closeAutocomplete();
-}
-
-async function populateModuleDropdown() {
-    const dropdownMenu = document.getElementById('module-dropdown-menu');
-    try {
-        const modules = await apiFetch('/api/modules');
-
-        if (modules && modules.length > 0) {
-            // Save names for autocomplete
-            moduleNames = modules.map(m => m.module_name);
-
-            dropdownMenu.innerHTML = modules.map(module => {
-                const safeName = module.module_name.replace(/'/g, "\\'");
-                return `<a class="dropdown-item" href="#" onclick="selectModule(event, '${safeName}')">${module.module_name}</a>`;
-            }).join('');
-        } else {
-            dropdownMenu.innerHTML = `<p class="dropdown-item text-muted">No modules found.</p>`;
+    // button click handler
+    function selectModuleFromButton() {
+        const input = document.getElementById('search-input');
+        if (moduleNames.length > 0) {
+            input.value = moduleNames[0];
+            handleSearch();
         }
-    } catch (error) {
-        console.error("Failed to load modules for dropdown:", error);
-        dropdownMenu.innerHTML = `<p class="dropdown-item text-danger">Error loading modules.</p>`;
     }
-}
 
+    // autocomplete selection
+    function selectModule(event, moduleName) {
+        event.preventDefault();
+        const input = document.getElementById('search-input');
+        input.value = moduleName;
+        handleSearch();
+        closeAutocomplete();
+    }
 
-    // Function to load ALL modules from the SQL endpoint
-async function loadAllModules() {
-    try {
-        const modules = await apiFetch('/api/modules');
-        renderModules(modules);
-    } catch (error) {
-            console.error("Failed to load all modules:", error);
+    // load dropdown data
+    async function populateModuleDropdown() {
+        const dropdownMenu = document.getElementById('module-dropdown-menu');
+        try {
+            const modules = await apiFetch('/api/modules');
+
+            if (modules && modules.length > 0) {
+                moduleNames = modules.map(m => m.module_name);
+                dropdownMenu.innerHTML = modules.map(module => {
+                    const safeName = module.module_name.replace(/'/g, "\\'");
+                    return `<a class="dropdown-item" href="#" onclick="selectModule(event, '${safeName}')">${module.module_name}</a>`;
+                }).join('');
+            } else {
+                dropdownMenu.innerHTML = `<p class="dropdown-item text-muted">No modules found.</p>`;
+            }
+        } catch (error) {
+            console.error("dropdown error:", error);
+            dropdownMenu.innerHTML = `<p class="dropdown-item text-danger">Error loading modules.</p>`;
+        }
+    }
+
+    // load initial data
+    async function loadAllModules() {
+        try {
+            const modules = await apiFetch('/api/modules');
+            allModulesData = modules;
+            currentPage = 1;
+            updateView();
+        } catch (error) {
+            console.error("load error:", error);
             const container = document.getElementById('module-list-container');
-            container.innerHTML = '<p class="col-12 text-center text-danger">Error loading modules. Please try again.</p>';
+            container.innerHTML = '<p class="col-12 text-center text-danger">Error loading modules.</p>';
+        }
     }
-}
 
-    // Function to handle the search button click
-async function handleSearch() {
-        console.log("Search initiated");
+    // search logic
+    async function handleSearch() {
         const searchInput = document.getElementById('search-input');
         const query = searchInput.value;
 
-    if (!query) {
-        loadAllModules();
-        return;
+        if (!query) {
+            loadAllModules();
+            return;
+        }
+
+        try {
+            const results = await apiFetch(`/api/search?q=${query}`);
+            allModulesData = results;
+            currentPage = 1;
+            updateView();
+            document.getElementById('module-list-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (error) {
+            console.error(error);
+            document.getElementById('module-list-container').innerHTML =
+                '<p class="col-12 text-center text-danger">Search failed.</p>';
+            document.getElementById('pagination-controls').innerHTML = '';
+        }
     }
 
-    try {
-        const results = await apiFetch(`/api/search?q=${query}`);
-        renderModules(results);
-        // --- NEW: Scroll to the results ---
-        document.getElementById('module-list-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } catch (error) {
-        console.error(error);
-        document.getElementById('module-list-container').innerHTML =
-            '<p class="col-12 text-center text-danger">Search failed. Please try again.</p>';
-    }
-}
+    // slice data for current page
+    function updateView() {
+        const container = document.getElementById('module-list-container');
 
-function renderModules(modules) {
-    const container = document.getElementById('module-list-container');
-    container.innerHTML = '';
-    if (!modules || modules.length === 0) {
-        container.innerHTML = '<p class="col-12 text-center h4 text-muted">No modules found.</p>';
-        return;
+        if (!allModulesData || allModulesData.length === 0) {
+            container.innerHTML = '<p class="col-12 text-center h4 text-muted">No modules found.</p>';
+            renderPaginationControls(0);
+            return;
+        }
+
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        const paginatedItems = allModulesData.slice(start, end);
+
+        renderModules(paginatedItems);
+        renderPaginationControls(Math.ceil(allModulesData.length / itemsPerPage));
     }
 
-    let imgIndex = 1;
-    modules.forEach(module => {
-        const moduleId = module.module_id;
-        const moduleName = module.module_name || module.title;
-        const instructor = module.instructor_name || 'TBA';
-        const rating = module.score ? (module.score * 5).toFixed(1) : '4.5';
-        const ratingCount = module.score ? '(Search)' : '(250)';
+    // render cards
+    function renderModules(modules) {
+        const container = document.getElementById('module-list-container');
+        container.innerHTML = '';
 
-        container.innerHTML += `
+        let imgIndex = 1;
+        modules.forEach(module => {
+            const moduleId = module.module_id;
+            const moduleName = module.module_name || module.title;
+            const instructor = module.instructor_name || 'TBA';
+            const rating = module.score ? (module.score * 5).toFixed(1) : '4.5';
+            const ratingCount = module.score ? '(Search)' : '(250)';
+
+            const currentImg = imgIndex;
+            imgIndex = (imgIndex % 6) + 1;
+
+            container.innerHTML += `
         <div class="col-lg-4 col-md-6 pb-4">
             <a class="modules-list-item position-relative d-block overflow-hidden mb-2" 
-                href="${'{{ url_for("views.module_detail", module_id="TEMP") }}'.replace('TEMP', moduleId)}">
+               href="${'{{ url_for("views.module_detail", module_id="TEMP") }}'.replace('TEMP', moduleId)}">
                 
-                <img class="img-fluid" src="{{ url_for('static', filename='img/modules-') }}${imgIndex}.jpg">
+                <img class="img-fluid" src="{{ url_for('static', filename='img/modules-') }}${currentImg}.jpg">
                 
                 <div class="modules-text">
                     <h4 class="text-center text-white px-3">${moduleId} ${moduleName}</h4>
@@ -118,56 +143,148 @@ function renderModules(modules) {
             </a>
         </div>
         `;
-        imgIndex = (imgIndex % 6) + 1;
-    });
-}
+        });
+    }
 
-function setupAutocomplete() {
-    const input = document.getElementById('search-input');
-    const list = document.getElementById('autocomplete-list');
+    // --- DASHBOARD PAGINATION THEME & LOGIC ---
+    function renderPaginationControls(totalPages) {
+        const controls = document.getElementById('pagination-controls');
 
-    input.addEventListener('input', () => {
-        const value = input.value.toLowerCase();
-        list.innerHTML = '';
-        if (!value) return;
+        if (totalPages <= 1) {
+            controls.style.display = 'none';
+            return;
+        } else {
+            controls.style.display = 'flex';
+        }
 
-        const matches = moduleNames.filter(name => name.toLowerCase().includes(value));
-        matches.forEach(name => {
-            const a = document.createElement('a');
-            a.className = 'dropdown-item';
-            a.href = '#';
-            a.textContent = name;
-            a.addEventListener('click', e => selectModule(e, name));
-            list.appendChild(a);
+        // styles to match dashboard theme without tailwind classes
+        const btnBase = "padding: 6px 12px; margin: 0 4px; border: 1px solid #dee2e6; border-radius: 6px; cursor: pointer; transition: all 0.2s;";
+        const btnInactive = btnBase + "background-color: white; color: #4a5568;";
+        const btnActive = btnBase + "background-color: #3182ce; color: white; border-color: #3182ce;";
+        const btnNav = btnBase + "background-color: white; color: #3182ce;";
+        const btnDisabled = btnBase + "background-color: #f7fafc; color: #a0aec0; cursor: not-allowed;";
+
+        let html = '';
+
+        // Prev Button
+        const prevDisabled = currentPage === 1;
+        html += `
+            <button 
+                onclick="changePage(-1)" 
+                style="${prevDisabled ? btnDisabled : btnNav}"
+                ${prevDisabled ? 'disabled' : ''}>
+                &laquo;
+            </button>
+        `;
+
+        // helper for number buttons
+        const generatePageButton = (page) => `
+            <button 
+                onclick="goToPage(${page})" 
+                style="${page === currentPage ? btnActive : btnInactive}">
+                ${page}
+            </button>
+        `;
+
+        // helper for dots
+        const generateEllipsis = () => `<span style="padding: 6px 8px; color: #a0aec0;">...</span>`;
+
+        // logic from dashboard
+        if (totalPages <= 7) {
+            for (let i = 1; i <= totalPages; i++) html += generatePageButton(i);
+        } else {
+            html += generatePageButton(1);
+            if (currentPage > 3) html += generateEllipsis();
+
+            let start = Math.max(2, currentPage - 1);
+            let end = Math.min(totalPages - 1, currentPage + 1);
+            if (currentPage <= 3) end = 4;
+            if (currentPage >= totalPages - 2) start = totalPages - 3;
+
+            for (let i = start; i <= end; i++) html += generatePageButton(i);
+
+            if (currentPage < totalPages - 2) html += generateEllipsis();
+            html += generatePageButton(totalPages);
+        }
+
+        // Next Button
+        const nextDisabled = currentPage === totalPages;
+        html += `
+            <button 
+                onclick="changePage(1)" 
+                style="${nextDisabled ? btnDisabled : btnNav}"
+                ${nextDisabled ? 'disabled' : ''}>
+                &raquo;
+            </button>
+        `;
+
+        controls.innerHTML = html;
+    }
+
+    function changePage(direction) {
+        const totalPages = Math.ceil(allModulesData.length / itemsPerPage);
+        const newPage = currentPage + direction;
+
+        if (newPage > 0 && newPage <= totalPages) {
+            currentPage = newPage;
+            updateView();
+            document.getElementById('module-list-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    function goToPage(pageNum) {
+        currentPage = pageNum;
+        updateView();
+        document.getElementById('module-list-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // autocomplete ui
+    function setupAutocomplete() {
+        const input = document.getElementById('search-input');
+        const list = document.getElementById('autocomplete-list');
+
+        input.addEventListener('input', () => {
+            const value = input.value.toLowerCase();
+            list.innerHTML = '';
+            if (!value) return;
+
+            const matches = moduleNames.filter(name => name.toLowerCase().includes(value));
+            matches.forEach(name => {
+                const a = document.createElement('a');
+                a.className = 'dropdown-item';
+                a.href = '#';
+                a.textContent = name;
+                a.addEventListener('click', e => selectModule(e, name));
+                list.appendChild(a);
+            });
+
+            list.classList.add('show');
         });
 
-        list.classList.add('show');
+        document.addEventListener('click', (e) => {
+            if (e.target !== input) closeAutocomplete();
+        });
+    }
+
+    function closeAutocomplete() {
+        const list = document.getElementById('autocomplete-list');
+        list.innerHTML = '';
+        list.classList.remove('show');
+    }
+
+    // setup listeners
+    document.addEventListener('DOMContentLoaded', (event) => {
+        populateModuleDropdown();
+        loadAllModules();
+        setupAutocomplete();
+
+        document.getElementById('search-button').addEventListener('click', handleSearch);
+        document.getElementById('module-button').addEventListener('click', selectModuleFromButton);
+
+        document.getElementById('search-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter' && e.target.value.trim() !== '') handleSearch();
+        });
     });
-
-    document.addEventListener('click', (e) => {
-        if (e.target !== input) closeAutocomplete();
-    });
-}
-
-function closeAutocomplete() {
-    const list = document.getElementById('autocomplete-list');
-    list.innerHTML = '';
-    list.classList.remove('show');
-}
-
-document.addEventListener('DOMContentLoaded', (event) => {
-//run setup functions
-    populateModuleDropdown();
-    loadAllModules();
-    setupAutocomplete();
-
-    document.getElementById('search-button').addEventListener('click', handleSearch);
-    document.getElementById('module-button').addEventListener('click', selectModuleFromButton);
-
-    document.getElementById('search-input').addEventListener('keydown', e => {
-        if (e.key === 'Enter' && e.target.value.trim() !== '') handleSearch();
-    });
-});
 </script>
 
 <div class="jumbotron jumbotron-fluid page-header position-relative overlay-bottom" style="margin-bottom: 90px;">
@@ -180,27 +297,23 @@ document.addEventListener('DOMContentLoaded', (event) => {
         </div>
 
         <div class="mx-auto mb-5" style="width: 100%; max-width: 600px;">
-        <div class="input-group">
-            <!-- dropdown selection -->
-            <div class="input-group-prepend dropdown">
-                <button class="btn btn-outline-light bg-white text-body dropdown-toggle" type="button"
+            <div class="input-group">
+                <div class="input-group-prepend dropdown">
+                    <button class="btn btn-outline-light bg-white text-body dropdown-toggle" type="button"
                         id="module-button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    Modules
-                </button>
-                <div class="dropdown-menu" id="module-dropdown-menu">
-                    <a class="dropdown-item" href="#">Loading...</a>
+                        Modules
+                    </button>
+                    <div class="dropdown-menu" id="module-dropdown-menu">
+                        <a class="dropdown-item" href="#">Loading...</a>
+                    </div>
+                </div>
+                <input type="text" id="search-input" class="form-control border-light" placeholder="Search modules...">
+                <div id="autocomplete-list" class="dropdown-menu w-100"></div>
+
+                <div class="input-group-append">
+                    <button class="btn btn-secondary" id="search-button">Search</button>
                 </div>
             </div>
-            <!-- search bar -->
-            <input type="text" id="search-input" class="form-control border-light"
-                placeholder="Search modules...">
-            <div id="autocomplete-list" class="dropdown-menu w-100"></div>
-            
-            <div class="input-group-append">
-                <button class="btn btn-secondary" id="search-button">Search</button>
-            </div>
-        </div>
-
         </div>
     </div>
 </div>
@@ -215,14 +328,19 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 </div>
             </div>
         </div>
-
-        <div class="row" id="module-list-container">
+        <div class="row">
+            <div class="col-12 d-flex justify-content-center align-items-center flex-wrap" id="pagination-controls">
+            </div>
+        </div>
+        <div class="row mt-5" id="module-list-container">
             <div class="col-12 text-center">
                 <div class="spinner-border text-secondary" style="width: 3rem; height: 3rem;" role="status">
                     <span class="sr-only">Loading modules...</span>
                 </div>
             </div>
         </div>
+
+
     </div>
 </div>
 
