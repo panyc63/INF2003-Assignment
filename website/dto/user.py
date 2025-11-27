@@ -33,14 +33,23 @@ class UserFullDetailsDTO:
     last_name: str
     email: str
     role: str
+    major: str
+    enrollment_year: int
+    department_code: str
+    title: str
 
-    def __init__(self, user_id: int, university_id: str, first_name: str, last_name: str, email: str, role: str):
+    def __init__(self, user_id: int, university_id: str, first_name: str, last_name: str, email: str, role: str,
+                 major: str, enrollment_year: int, department_code: str, title: str):
         self.user_id = user_id
         self.university_id = university_id
         self.first_name = first_name
         self.last_name = last_name
         self.email = email
         self.role = role
+        self.major = major
+        self.enrollment_year = enrollment_year
+        self.department_code = department_code
+        self.title = title
 
 class UserInsertDTO:
     university_id: str

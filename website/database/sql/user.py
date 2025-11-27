@@ -75,10 +75,14 @@ def toggle_user_status(user_id: int) -> int:
     return result.rowcount if result.rowcount > 0 else -1
 
 def get_user_full_details(user_id: int) -> UserFullDetailsDTO:
-    sql_statement: TextClause = text("""SELECT * FROM users WHERE user_id = :id""")
+    sql_statement = text("""SELECT u.*, s.major, s.enrollment_year, i.department_code, i.title FROM users u
+                         LEFT JOIN students s ON u.user_id = s.student_id
+                         LEFT JOIN instructors i ON u.user_id = i.instructor_id
+                         WHERE u.user_id = :id""")
     row = db.session.execute(sql_statement, {"id": user_id}).first()
 
     if row:
-        return UserFullDetailsDTO(row.user_id, row.university_id, row.first_name, row.last_name, row.email, row.role)
+        return UserFullDetailsDTO(row.user_id, row.university_id, row.first_name, row.last_name, row.email, row.role,
+                                  row.major, row.enrollment_year, row.department_code, row.title)
     else:
         return None
