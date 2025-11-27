@@ -1,7 +1,7 @@
 from sqlalchemy import TextClause, text, Row
 from typing import Sequence
 from ... import db
-from ...models.user import UserInsertDTO, UserBasicDTO , UserDetailedDTO, UserUpdateDTO, UserFullDetailsDTO
+from ...dto.user import UserInsertDTO, UserBasicDTO , UserDetailedDTO, UserInstructorInsertDTO, UserStudentInsertDTO, UserUpdateDTO, UserFullDetailsDTO
 
 def get_user_data() -> list[UserBasicDTO]:
     sql_statement: TextClause = text("SELECT user_id, email, first_name, last_name, role FROM users")
@@ -30,6 +30,26 @@ def create_user(user: UserInsertDTO) -> int:
             "uid": user.university_id, "email": user.email, "fname": user.first_name,
             "lname": user.last_name, "role": user.role
         })
+
+        return result.lastrowid
+    except Exception as e:
+        raise e
+    
+def create_student(student: UserStudentInsertDTO) -> int:
+    try:
+        sql_statement: TextClause = text("""INSERT INTO students (student_id, major, enrollment_year) VALUES (:id, :major, :year)""")
+        result = db.session.execute(sql_statement, {"id": student.student_id, "major": student.major, "year": student.enrollment_year})
+
+        return result.lastrowid
+    except Exception as e:
+        raise e
+    
+def create_instructor(instructor: UserInstructorInsertDTO) -> int:
+    try:
+        sql_statement: TextClause = text("""INSERT INTO instructors (instructor_id, department_code, title)
+                                         VALUES (:id, :dept, :title)""")
+        result = db.session.execute(sql_statement, {"id": instructor.instructor_id, "dept": instructor.department_code,
+                                                     "title": instructor.title})
 
         return result.lastrowid
     except Exception as e:
