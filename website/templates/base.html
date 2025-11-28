@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}UCMS - University Module Management System{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.gstatic.com">
-    <link href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet"> 
+    <link
+        href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600;700&family=Open+Sans:wght@400;600&display=swap"
+        rel="stylesheet">
 
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
 
@@ -13,234 +16,257 @@
 
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f4f7f9; }
-        .card { @apply bg-white p-6 rounded-xl shadow-lg transition duration-300 hover:shadow-xl; }
-        .btn-primary { @apply px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-150; }
-        .btn-secondary { @apply px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition duration-150; }
-        .nav-link { @apply text-gray-700 hover:text-blue-600 font-medium cursor-pointer transition duration-150; }
-        .module-item { @apply border-b border-gray-100 p-4 hover:bg-blue-50 transition duration-150; }
-        /* Global State and Message holder for the whole app */
-        #status-message-container { min-height: 50px; }
-    </style>
-    
-  <script>
-    let currentState = {
-        loggedIn: false,
-        userId: null,
-        userRole: '',
-        userName: '', 
-        studentId: null, 
-        instructorId: null,
-    };
-    
-    function updateNavAndState() {
-        // 1. Load State from LocalStorage
-        const userId = localStorage.getItem('user_id');
-        const userRole = localStorage.getItem('user_role');
-        const userName = localStorage.getItem('user_name'); 
-        const studentId = localStorage.getItem('student_id');
-        const instructorId = localStorage.getItem('instructor_id');
-
-        // 2. Update Global State Object
-        if (userId && userRole) {
-            currentState.loggedIn = true;
-            currentState.userId = parseInt(userId);
-            currentState.userRole = userRole;
-            currentState.userName = userName;
-            currentState.studentId = studentId ? parseInt(studentId) : null;
-            currentState.instructorId = instructorId ? parseInt(instructorId) : null;
-        } else {
-            currentState.loggedIn = false;
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f9;
         }
 
-        // 3. Render Dynamic Navbar
-        const navContainer = document.getElementById('navbar-links');
-        if (navContainer) {
-            // Default Public Links
-            let navHtml = `
+        .card {
+            @apply bg-white p-6 rounded-xl shadow-lg transition duration-300 hover:shadow-xl;
+        }
+
+        .btn-primary {
+            @apply px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition duration-150;
+        }
+
+        .btn-secondary {
+            @apply px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition duration-150;
+        }
+
+        .nav-link {
+            @apply text-gray-700 hover:text-blue-600 font-medium cursor-pointer transition duration-150;
+        }
+
+        .module-item {
+            @apply border-b border-gray-100 p-4 hover:bg-blue-50 transition duration-150;
+        }
+
+        /* Global State and Message holder for the whole app */
+        #status-message-container {
+            min-height: 50px;
+        }
+    </style>
+
+    <script>
+        let currentState = {
+            loggedIn: false,
+            userId: null,
+            userRole: '',
+            userName: '',
+            studentId: null,
+            instructorId: null,
+        };
+
+        function updateNavAndState() {
+            // 1. Load State from LocalStorage
+            const userId = localStorage.getItem('user_id');
+            const userRole = localStorage.getItem('user_role');
+            const userName = localStorage.getItem('user_name');
+            const studentId = localStorage.getItem('student_id');
+            const instructorId = localStorage.getItem('instructor_id');
+
+            // 2. Update Global State Object
+            if (userId && userRole) {
+                currentState.loggedIn = true;
+                currentState.userId = parseInt(userId);
+                currentState.userRole = userRole;
+                currentState.userName = userName;
+                currentState.studentId = studentId ? parseInt(studentId) : null;
+                currentState.instructorId = instructorId ? parseInt(instructorId) : null;
+            } else {
+                currentState.loggedIn = false;
+            }
+
+            // 3. Render Dynamic Navbar
+            const navContainer = document.getElementById('navbar-links');
+            if (navContainer) {
+                // Default Public Links
+                let navHtml = `
                 <a href="/" class="nav-link">Home</a>
                 <a href="/about" class="nav-link">About Us</a>
                 <a href="/modules" class="nav-link">Modules</a>
             `;
-            if (currentState.loggedIn) {
-                // Role-Specific Links
-                if (currentState.userRole === 'student') {
-                    navHtml = `<a href="/about" class="nav-link">About</a>`;
-                    navHtml += `<a href="/modules" class="nav-link">Modules</a>`;
-                    navHtml += `<a href="/dashboard" class="nav-link">Dashboard</a>`;
-                } else if (currentState.userRole === 'instructor') {
-                    navHtml = `<a href="/" class="nav-link">Home</a>`;
-                    navHtml += `<a href="/about" class="nav-link">About</a>`;
-                    navHtml += `<a href="/modules" class="nav-link">Modules</a>`;
-                    navHtml += `<a href="/instructor_dashboard" class="nav-link">Dashboard</a>`;
-                } else if (currentState.userRole === 'admin') {
-                    navHtml = `<a href="/admin_dashboard" class="nav-link" style="color: #4f46e5;">Admin</a>`;
-                    navHtml += `<a href="/admin/modules" class="nav-link">Manage Modules</a>`;
-                    navHtml += `<a href="/admin/users" class="nav-link">Manage Users</a>`;
+                if (currentState.loggedIn) {
+                    // Role-Specific Links
+                    if (currentState.userRole === 'student') {
+                        navHtml = `<a href="/" class="nav-link">Home</a>`;
+                        navHtml += `<a href="/about" class="nav-link">About</a>`;
+                        navHtml += `<a href="/modules" class="nav-link">Modules</a>`;
+                        navHtml += `<a href="/dashboard" class="nav-link">Dashboard</a>`;
+                    } else if (currentState.userRole === 'instructor') {
+                        navHtml = `<a href="/" class="nav-link">Home</a>`;
+                        navHtml += `<a href="/about" class="nav-link">About</a>`;
+                        navHtml += `<a href="/modules" class="nav-link">Modules</a>`;
+                        navHtml += `<a href="/instructor_dashboard" class="nav-link">Dashboard</a>`;
+                    } else if (currentState.userRole === 'admin') {
+                        navHtml = `<a href="/admin_dashboard" class="nav-link" style="color: #4f46e5;">Admin</a>`;
+                        navHtml += `<a href="/admin/modules" class="nav-link">Manage Modules</a>`;
+                        navHtml += `<a href="/admin/users" class="nav-link">Manage Users</a>`;
+                    }
+
+                    // Logout Link
+                    navHtml += `<a href="javascript:void(0)" class="nav-link" onclick="handleAuthClick()">Logout (${currentState.userName})</a>`;
+                } else {
+                    // Login Link
+                    navHtml += `<a href="/login" class="nav-link" onclick="handleAuthClick()">Login</a>`;
                 }
 
-                // Logout Link
-                navHtml += `<a href="javascript:void(0)" class="nav-link" onclick="handleAuthClick()">Logout (${currentState.userName})</a>`;
-            } else {
-                // Login Link
-                navHtml += `<a href="/login" class="nav-link" onclick="handleAuthClick()">Login</a>`;
+                navContainer.innerHTML = navHtml;
             }
 
-            navContainer.innerHTML = navHtml;
+            // 4. Redirect Logic (Protect Routes)
+            const path = window.location.pathname;
+            let intendedDashboard = '/dashboard'; // Default
+            if (currentState.userRole === 'instructor') intendedDashboard = '/instructor_dashboard';
+            if (currentState.userRole === 'admin') intendedDashboard = '/admin/dashboard';
+
+            // If logged in and trying to access Login page, go to dashboard
+            if (currentState.loggedIn && (path === '/login')) {
+                window.location.href = intendedDashboard;
+            }
+            // If NOT logged in and trying to access protected pages
+            else if (!currentState.loggedIn && (path.includes('dashboard') || path.includes('admin'))) {
+                window.location.href = '/login';
+            }
         }
 
-        // 4. Redirect Logic (Protect Routes)
-        const path = window.location.pathname;
-        let intendedDashboard = '/dashboard'; // Default
-        if (currentState.userRole === 'instructor') intendedDashboard = '/instructor_dashboard';
-        if (currentState.userRole === 'admin') intendedDashboard = '/admin/dashboard';
+        // --- Logout Function ---
+        window.handleAuthClick = function () {
+            if (currentState.loggedIn) {
+                // Clear ALL keys
+                localStorage.clear();
 
-        // If logged in and trying to access Login page, go to dashboard
-        if (currentState.loggedIn && (path === '/login')) {
-            window.location.href = intendedDashboard;
-        } 
-        // If NOT logged in and trying to access protected pages
-        else if (!currentState.loggedIn && (path.includes('dashboard') || path.includes('admin'))) {
-            window.location.href = '/login';
+                showStatusMessage('Logged out successfully.', 'success');
+                // Allow a small delay for the message to be seen if necessary, or immediate redirect
+                window.location.href = '/login';
+            } else {
+                window.location.href = '/login';
+            }
         }
-    }
 
-    // --- Logout Function ---
-    window.handleAuthClick = function() {
-        if (currentState.loggedIn) {
-            // Clear ALL keys
-            localStorage.clear();
-            
-            showStatusMessage('Logged out successfully.', 'success');
-            // Allow a small delay for the message to be seen if necessary, or immediate redirect
-            window.location.href = '/login'; 
-        } else {
-            window.location.href = '/login';
-        }
-    }
-    
-    // Utility functions
-    function showStatusMessage(message, type = 'info') {
-        const container = document.getElementById('status-message-container');
-        if (!container) return;
+        // Utility functions
+        function showStatusMessage(message, type = 'info') {
+            const container = document.getElementById('status-message-container');
+            if (!container) return;
 
-        const bgColor = type === 'success' ? 'bg-green-100 border-green-400 text-green-700' :
-                        type === 'error' ? 'bg-red-100 border-red-400 text-red-700' :
-                        'bg-blue-100 border-blue-400 text-blue-700';
+            const bgColor = type === 'success' ? 'bg-green-100 border-green-400 text-green-700' :
+                type === 'error' ? 'bg-red-100 border-red-400 text-red-700' :
+                    'bg-blue-100 border-blue-400 text-blue-700';
 
-        container.innerHTML = `
+            container.innerHTML = `
             <div class="border ${bgColor} px-4 py-3 rounded relative mb-4" role="alert">
                 <strong class="font-bold">${type.toUpperCase()}!</strong>
                 <span class="block sm:inline ml-2">${message}</span>
             </div>
         `;
-    }
-
-    async function apiFetch(endpoint, options = {}) {
-        console.log('API Fetch called with endpoint:', endpoint, 'and options:', options);
-        
-        const headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            ...options.headers,
-        };
-
-        const config = {
-            ...options,
-            headers: headers,
-        };
-
-        // --- ROBUST FIX: Only stringify if it's not already a string ---
-        if (config.body && typeof config.body !== 'string') {
-            config.body = JSON.stringify(config.body);
         }
-        // --------------------------------------------------------------
 
-        try {
-            const response = await fetch(endpoint, config);
+        async function apiFetch(endpoint, options = {}) {
+            console.log('API Fetch called with endpoint:', endpoint, 'and options:', options);
 
-            // Handle empty responses (like 204 No Content)
-            if (response.status === 204) {
-                return {};
+            const headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                ...options.headers,
+            };
+
+            const config = {
+                ...options,
+                headers: headers,
+            };
+
+            // --- ROBUST FIX: Only stringify if it's not already a string ---
+            if (config.body && typeof config.body !== 'string') {
+                config.body = JSON.stringify(config.body);
             }
+            // --------------------------------------------------------------
 
-            if (!response.ok) {
-                let errorData;
-                try {
-                    errorData = await response.json();
-                } catch (jsonError) {
-                    throw new Error(response.statusText);
+            try {
+                const response = await fetch(endpoint, config);
+
+                // Handle empty responses (like 204 No Content)
+                if (response.status === 204) {
+                    return {};
                 }
-                const errorMessage = errorData.message || errorData.error || 'An unknown error occurred.';
-                throw new Error(errorMessage);
-            }
-            return await response.json();
 
-        } catch (error) {
-            console.error('Fetch error:', error);
-            throw error;
-        }
-    }
+                if (!response.ok) {
+                    let errorData;
+                    try {
+                        errorData = await response.json();
+                    } catch (jsonError) {
+                        throw new Error(response.statusText);
+                    }
+                    const errorMessage = errorData.message || errorData.error || 'An unknown error occurred.';
+                    throw new Error(errorMessage);
+                }
+                return await response.json();
 
-    // --- DB Switcher Logic ---
-    async function toggleDatabase(checkbox) {
-        const isMongo = checkbox.checked;
-        const provider = isMongo ? 'mongodb' : 'sql';
-        
-        // Visual loading state (optional, but good for UX)
-        const label = document.getElementById('db-label-text');
-        if(label) label.textContent = "Switching...";
-
-        try {
-            const result = await apiFetch('/api/switch-db', {
-                method: 'POST',
-                body: { provider: provider }
-            });
-
-            showStatusMessage(result.message, 'success');
-            // Save preference locally
-            localStorage.setItem('db_provider', provider);
-            
-            // Reload page after a brief moment to ensure data refreshes from new DB
-            setTimeout(() => {
-                window.location.reload();
-            }, 500);
-
-        } catch (error) {
-            console.error(error);
-            showStatusMessage("Failed to switch database. See console.", 'error');
-            // Revert toggle visual state
-            checkbox.checked = !isMongo;
-        } finally {
-            if(label) label.textContent = provider === 'mongodb' ? 'NoSQL' : 'SQL';
-        }
-    }
-
-    // Run the update only after the DOM is loaded
-    document.addEventListener('DOMContentLoaded', () => {
-        updateNavAndState();
-        
-        // Initialize Toggle State based on localStorage
-        const dbToggle = document.getElementById('db-toggle-switch');
-        if (dbToggle) {
-            const savedProvider = localStorage.getItem('db_provider');
-            if (savedProvider === 'mongodb') {
-                dbToggle.checked = true;
-            } else {
-                dbToggle.checked = false;
+            } catch (error) {
+                console.error('Fetch error:', error);
+                throw error;
             }
         }
-    });
+
+        // --- DB Switcher Logic ---
+        async function toggleDatabase(checkbox) {
+            const isMongo = checkbox.checked;
+            const provider = isMongo ? 'mongodb' : 'sql';
+
+            // Visual loading state (optional, but good for UX)
+            const label = document.getElementById('db-label-text');
+            if (label) label.textContent = "Switching...";
+
+            try {
+                const result = await apiFetch('/api/switch-db', {
+                    method: 'POST',
+                    body: { provider: provider }
+                });
+
+                showStatusMessage(result.message, 'success');
+                // Save preference locally
+                localStorage.setItem('db_provider', provider);
+
+                // Reload page after a brief moment to ensure data refreshes from new DB
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+
+            } catch (error) {
+                console.error(error);
+                showStatusMessage("Failed to switch database. See console.", 'error');
+                // Revert toggle visual state
+                checkbox.checked = !isMongo;
+            } finally {
+                if (label) label.textContent = provider === 'mongodb' ? 'NoSQL' : 'SQL';
+            }
+        }
+
+        // Run the update only after the DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            updateNavAndState();
+
+            // Initialize Toggle State based on localStorage
+            const dbToggle = document.getElementById('db-toggle-switch');
+            if (dbToggle) {
+                const savedProvider = localStorage.getItem('db_provider');
+                if (savedProvider === 'mongodb') {
+                    dbToggle.checked = true;
+                } else {
+                    dbToggle.checked = false;
+                }
+            }
+        });
     </script>
-    
+
     {% block head_extras %}{% endblock %}
 </head>
+
 <body class="min-h-screen flex flex-col">
 
     <header class="bg-white shadow-md sticky top-0 z-10">
         <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             <h1 class="text-2xl font-bold text-blue-800"><a href="/">UCMS</a></h1>
-            
+
             <div class="flex items-center">
                 <div class="flex space-x-6 mr-6" id="navbar-links">
                     <a href="/" class="nav-link">Home</a>
@@ -252,8 +278,11 @@
                 <div class="flex items-center border-l pl-6 border-gray-300" title="Switch Database Backend">
                     <span class="mr-2 text-xs font-bold text-gray-500">SQL</span>
                     <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="db-toggle-switch" class="sr-only peer" onchange="toggleDatabase(this)">
-                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-600"></div>
+                        <input type="checkbox" id="db-toggle-switch" class="sr-only peer"
+                            onchange="toggleDatabase(this)">
+                        <div
+                            class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-600">
+                        </div>
                     </label>
                     <span class="ml-2 text-xs font-bold text-green-600">MongoDB</span>
                 </div>
@@ -264,7 +293,7 @@
     <main class="px-4 sm:px-6 lg:px-8 py-10 w-full">
         {% block content %}{% endblock %}
     </main>
-    
+
     <footer class="bg-gray-100 mt-auto">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-gray-500 text-sm">
             &copy; 2025 University Module Management System. All rights reserved.
@@ -281,4 +310,5 @@
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 
 </body>
+
 </html>

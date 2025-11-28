@@ -7,6 +7,46 @@ from typing import Dict, Any, List
 #  SQL READ OPERATIONS
 # =====================================================
 
+def search_modules_text(query: str, filters: Dict) -> List[Dict[str, Any]]:
+    """
+    SQL Fallback Search.
+    Uses standard LIKE operators. Prevents crash when in SQL Mode.
+    """
+    base_sql = """
+        SELECT 
+            c.*, 
+            u.first_name, u.last_name
+        FROM modules c
+        LEFT JOIN instructors i ON c.instructor_id = i.instructor_id
+        LEFT JOIN users u ON i.instructor_id = u.user_id
+        WHERE (c.module_name LIKE :q OR c.module_id LIKE :q)
+    """
+    params = {"q": f"%{query}%"}
+
+    # Add SQL Filters
+    if filters.get('term'):
+        base_sql += " AND c.academic_term = :term"
+        params['term'] = filters['term']
+    
+    result = db.session.execute(text(base_sql), params).all()
+    
+    results = []
+    for row in result:
+        instructor_name = f"{row.first_name} {row.last_name}" if row.first_name else "TBA"
+        results.append({
+            "module_id": row.module_id,
+            "module_code": row.module_code if hasattr(row, 'module_code') else row.module_id,
+            "module_name": row.module_name,
+            "description": row.description,
+            "credits": row.credits,
+            "academic_term": row.academic_term,
+            "max_capacity": row.max_capacity,
+            "current_enrollment": row.current_enrollment,
+            "instructor_name": instructor_name,
+            "score": 1.0 # Placeholder score for SQL results
+        })
+    return results
+
 def get_module_data():
     sql = text("""
         SELECT 
@@ -42,6 +82,7 @@ def get_module_data():
             "created_at": c.created_at.isoformat() if c.created_at else None
         })
     return results
+
 
 def get_module_details_by_id(module_id, student_id=None):
     sql = text("""
