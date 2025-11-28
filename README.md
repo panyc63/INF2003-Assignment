@@ -42,8 +42,8 @@ UCMS-University Course Management System is a modern, full-stack web application
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/UCMS.git
-cd UCMS
+git clone https://github.com/panyc63/INF2003-Assignment.git
+cd edukate
 ```
 
 ### 2. Install Dependencies
