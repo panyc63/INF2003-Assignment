@@ -1,58 +1,173 @@
 from .. import mongo
 from datetime import datetime
 from typing import Dict, Any, List
+import re
+_embedding_model = None
 
+def get_model():
+    global _embedding_model
+    if _embedding_model is None:
+        print("⏳ Loading AI Model (First Run Only)...")
+        from sentence_transformers import SentenceTransformer
+        _embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+    return _embedding_model
 # =====================================================
 #  MONGODB READ OPERATIONS
 # =====================================================
+def search_modules_by_query(original_query, term=None, level=None, instructor=None, student_major=None):
+    """Semantic Search for modules with Exact Match fallback."""
+    if not original_query:
+        return []
+
+    # --- 1. EXACT MATCH CHECK (Regex) ---
+    clean_query = original_query.replace(" ", "")
+    module_code_pattern = re.compile(r'^[a-zA-Z]{1,4}\d{3,4}[a-zA-Z]?$')
+    print(module_code_pattern.match(clean_query))
+    
+    if module_code_pattern.match(clean_query):
+        # Look in 'modules' collection
+        exact_matches = list(mongo.db.modules.find(
+            {"module_id": {"$regex": f"^{clean_query}$", "$options": "i"}},
+            {"_id": 0, "module_id": 1}
+        ))
+        
+        if exact_matches:
+            module_ids = [res['module_id'] for res in exact_matches]
+            hydrated_results = get_module_details_by_ids_list(module_ids)
+            
+            for res in hydrated_results:
+                res['score'] = 1.0
+                # Ensure module_code exists (it's same as module_id)
+                res['module_code'] = res['module_id']
+            
+            return hydrated_results
+
+    # --- 2. VECTOR SEARCH ---
+    query_vector = get_model().encode(original_query).tolist()
+    
+    filter_list = []
+    
+    if term:
+        filter_list.append({"academic_term": {"$eq": term}})
+    if level:
+        try:
+            filter_list.append({"module_level": {"$eq": int(level)}})
+        except ValueError: pass 
+    if instructor:
+        filter_list.append({"instructor_name": {"$eq": instructor}})
+
+    # Filter by Major
+    if student_major:
+        filter_list.append({"target_majors": {"$eq": student_major}})
+
+    vector_search_stage = {
+        "index": "vector_index_search",
+        "path": "embedding",
+        "queryVector": query_vector,
+        "numCandidates": 100,
+        "limit": 10
+    }
+
+    if filter_list:
+        vector_filter = filter_list[0] if len(filter_list) == 1 else {"$and": filter_list}
+        vector_search_stage["filter"] = vector_filter
+
+    pipeline = [
+        {"$vectorSearch": vector_search_stage},
+        {"$project": {"_id": 0, "module_id": 1, "score": { "$meta": "vectorSearchScore" }}}
+    ]
+    
+    try:
+        mongo_results = list(mongo.db.modules.aggregate(pipeline))
+    except Exception as e:
+        print(f"Mongo Error: {e}")
+        raise e
+
+    if not mongo_results:
+        return []
+
+    module_ids = [res['module_id'] for res in mongo_results]
+    hydrated_results = get_module_details_by_ids_list(module_ids)
+    
+    score_map = {res['module_id']: res['score'] for res in mongo_results}
+    
+    for res in hydrated_results:
+        res['score'] = score_map.get(res['module_id'], 0)
+        # Ensure module_code exists
+        res['module_code'] = res['module_id']
+
+    return hydrated_results
 
 def get_module_data():
-    modules = list(mongo.db.modules.find())
+    """
+    OPTIMIZED: Uses MongoDB Aggregation ($lookup) to join Instructor data
+    in a single query, preventing the N+1 problem.
+    """
+    pipeline = [
+        {
+            "$lookup": {
+                "from": "users",
+                "localField": "instructor_id",
+                "foreignField": "user_id",
+                "as": "instructor_info"
+            }
+        },
+        {
+            "$unwind": {
+                "path": "$instructor_info",
+                "preserveNullAndEmptyArrays": True
+            }
+        },
+        {
+            "$project": {
+                "module_id": 1,
+                "module_code": 1,
+                "module_name": 1,
+                "description": 1,
+                "prerequisites": 1,
+                "credits": 1,
+                "academic_term": 1,
+                "max_capacity": 1,
+                "current_enrollment": 1,
+                "created_at": 1,
+                # Concat name if exists, else TBA
+                "instructor_name": {
+                    "$cond": {
+                        "if": {"$ifNull": ["$instructor_info", False]},
+                        "then": {"$concat": ["$instructor_info.first_name", " ", "$instructor_info.last_name"]},
+                        "else": "TBA"
+                    }
+                }
+            }
+        }
+    ]
+    
+    modules = list(mongo.db.modules.aggregate(pipeline))
+    
+    # Python-side post-processing for logic hard to do in Aggregation
     results = []
     for c in modules:
-        # 1. Handle Capacity/Enrollment Math
         max_cap = c.get('max_capacity')
         curr_enroll = c.get('current_enrollment')
+        slots_left = (max_cap - curr_enroll) if (max_cap is not None and curr_enroll is not None) else None
         
-        slots_left = None
-        if max_cap is not None and curr_enroll is not None:
-            slots_left = max_cap - curr_enroll
-
-        # 2. Handle Instructor Name (Manual Join)
-        instructor_name = c.get('instructor_name')
-        if not instructor_name and c.get('instructor_id'):
-            inst = mongo.db.users.find_one({"user_id": c.get('instructor_id')})
-            if inst:
-                instructor_name = f"{inst.get('first_name')} {inst.get('last_name')}"
-            else:
-                instructor_name = "TBA"
-
-        # 3. FIX: Robust Date Handling
+        # Handle date conversion
         raw_date = c.get('created_at')
         if isinstance(raw_date, datetime):
             final_date = raw_date.isoformat()
-        elif raw_date:
-            final_date = str(raw_date)
         else:
-            final_date = datetime.now().isoformat()
+            final_date = str(raw_date) if raw_date else datetime.now().isoformat()
 
         results.append({
-            "module_id": c.get('module_id'),
-            "module_code": c.get('module_code') or c.get('module_id'), # Fallback
-            "module_name": c.get('module_name'),
-            "description": c.get('description'),
-            "prerequisites": c.get('prerequisites'), 
-            "credits": c.get('credits'),
-            "academic_term": c.get('academic_term'),
-            "max_capacity": max_cap,
-            "current_enrollment": curr_enroll,
+            **c, # Unpack fields from projection
+            "module_code": c.get('module_code') or c.get('module_id'),
             "slots_left": slots_left,
-            "instructor_name": instructor_name, 
             "created_at": final_date
         })
     return results
 
 def get_module_details_by_id(module_id, student_id=None):
+    # (Kept mostly original, just slight cleanup)
     module = mongo.db.modules.find_one({"module_id": module_id})
     if not module: return None
     
@@ -63,12 +178,8 @@ def get_module_details_by_id(module_id, student_id=None):
 
     curr = module.get('current_enrollment')
     cap = module.get('max_capacity')
-    
-    slots_left = None
-    if cap is not None and curr is not None:
-        slots_left = cap - curr
+    slots_left = (cap - curr) if (cap is not None and curr is not None) else None
 
-    # Handle Instructor Name
     instructor_name = module.get('instructor_name')
     if not instructor_name and module.get('instructor_id'):
         inst = mongo.db.users.find_one({"user_id": module.get('instructor_id')})
@@ -93,13 +204,83 @@ def get_module_details_by_id(module_id, student_id=None):
     }
 
 def get_module_details_by_ids_list(module_ids: List[str]) -> List[Dict[str, Any]]:
+    # Optimizable, but using loop for now to reuse get_module_details logic
     if not module_ids: return []
+    # Distinct allows removing duplicates
     modules = list(mongo.db.modules.find({"module_id": {"$in": module_ids}}))
-    # Use helper to ensure consistent formatting
     return [get_module_details_by_id(c['module_id']) for c in modules]
 
+def search_modules_semantic(text_query, vector_query, filters):
+    """
+    Schema 3 Implementation:
+    Handles Exact Match (Regex) and Semantic Search (Vector) in one function.
+    """
+    clean_query = text_query.replace(" ", "")
+    
+    # 1. EXACT MATCH STRATEGY (Regex)
+    # If it looks like a module code, verify existence first
+    if re.match(r'^[a-zA-Z]{1,4}\d{3,4}[a-zA-Z]?$', clean_query):
+        exact_matches = list(mongo.db.modules.find(
+            {"module_id": {"$regex": f"^{clean_query}$", "$options": "i"}},
+            {"_id": 0, "module_id": 1}
+        ))
+        if exact_matches:
+            ids = [m['module_id'] for m in exact_matches]
+            results = get_module_details_by_ids_list(ids)
+            for r in results: 
+                r['score'] = 1.0
+                r['module_code'] = r['module_id']
+            return results
+
+    # 2. VECTOR SEARCH STRATEGY (Atlas Search)
+    filter_list = []
+    if filters.get('term'): filter_list.append({"academic_term": {"$eq": filters['term']}})
+    if filters.get('instructor'): filter_list.append({"instructor_name": {"$eq": filters['instructor']}})
+    if filters.get('major'): filter_list.append({"target_majors": {"$eq": filters['major']}})
+    if filters.get('level'):
+        try: filter_list.append({"module_level": {"$eq": int(filters['level'])}})
+        except ValueError: pass
+
+    vector_stage = {
+        "index": "vector_index_search",
+        "path": "embedding",
+        "queryVector": vector_query,
+        "numCandidates": 100,
+        "limit": 10
+    }
+
+    if filter_list:
+        vector_filter = filter_list[0] if len(filter_list) == 1 else {"$and": filter_list}
+        vector_stage["filter"] = vector_filter
+
+    pipeline = [
+        {"$vectorSearch": vector_stage},
+        {"$project": {"module_id": 1, "score": {"$meta": "vectorSearchScore"}}}
+    ]
+
+    try:
+        mongo_results = list(mongo.db.modules.aggregate(pipeline))
+    except Exception as e:
+        print(f"Mongo Aggregation Error: {e}")
+        return []
+
+    if not mongo_results:
+        return []
+
+    # Hydrate Results
+    ids = [res['module_id'] for res in mongo_results]
+    hydrated_results = get_module_details_by_ids_list(ids)
+    
+    # Attach Scores
+    score_map = {res['module_id']: res['score'] for res in mongo_results}
+    for res in hydrated_results:
+        res['score'] = score_map.get(res['module_id'], 0)
+        res['module_code'] = res['module_id']
+
+    return hydrated_results
+
 # =====================================================
-#  MONGODB WRITE OPERATIONS (moduleS)
+#  MONGODB WRITE OPERATIONS & USERS (Kept standard)
 # =====================================================
 
 def create_module(data):

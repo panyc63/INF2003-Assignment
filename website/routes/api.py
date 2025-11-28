@@ -3,6 +3,7 @@ from website import mongo
 import re
 import difflib
 from sentence_transformers import SentenceTransformer
+from ..services import services_mongo
 from ..services.services import (
     get_module_data,
     get_module_details_by_id,
@@ -75,95 +76,28 @@ def get_students():
     return jsonify(all_students)
 @api_bp.route('/search', methods=['GET'])
 def search_modules():
-    """Semantic Search for modules with Exact Match fallback."""
+    """Semantic Search for modules."""
     original_query = request.args.get('q', '').strip()
     term = request.args.get('term', None)
     level = request.args.get('level', None)
     instructor = request.args.get('instructor', None)
-    
-    # Get major param
     student_major = request.args.get('major', None)
 
     if not original_query:
         return jsonify({"error": "No query provided"}), 400
 
-    # --- 1. EXACT MATCH CHECK (Regex) ---
-    clean_query = original_query.replace(" ", "")
-    module_code_pattern = re.compile(r'^[a-zA-Z]{1,4}\d{3,4}[a-zA-Z]?$')
-    
-    if module_code_pattern.match(clean_query):
-        # Look in 'modules' collection
-        exact_matches = list(mongo.db.modules.find(
-            {"module_id": {"$regex": f"^{clean_query}$", "$options": "i"}},
-            {"_id": 0, "module_id": 1}
-        ))
-        
-        if exact_matches:
-            module_ids = [res['module_id'] for res in exact_matches]
-            hydrated_results = get_module_details_by_ids_list(module_ids)
-            
-            for res in hydrated_results:
-                res['score'] = 1.0
-                # Ensure module_code exists (it's same as module_id)
-                res['module_code'] = res['module_id']
-            
-            return jsonify(hydrated_results)
-
-    # --- 2. VECTOR SEARCH ---
-    query_vector = model.encode(original_query).tolist()
-    
-    filter_list = []
-    
-    if term:
-        filter_list.append({"academic_term": {"$eq": term}})
-    if level:
-        try:
-            filter_list.append({"module_level": {"$eq": int(level)}})
-        except ValueError: pass 
-    if instructor:
-        filter_list.append({"instructor_name": {"$eq": instructor}})
-
-    # Filter by Major
-    if student_major:
-        filter_list.append({"target_majors": {"$eq": student_major}})
-
-    vector_search_stage = {
-        "index": "vector_index_search",
-        "path": "embedding",
-        "queryVector": query_vector,
-        "numCandidates": 100,
-        "limit": 10
-    }
-
-    if filter_list:
-        vector_filter = filter_list[0] if len(filter_list) == 1 else {"$and": filter_list}
-        vector_search_stage["filter"] = vector_filter
-
-    pipeline = [
-        {"$vectorSearch": vector_search_stage},
-        {"$project": {"_id": 0, "module_id": 1, "score": { "$meta": "vectorSearchScore" }}}
-    ]
-    
     try:
-        mongo_results = list(mongo.db.modules.aggregate(pipeline))
+        # Just call the service. The service handles the model loading internally.
+        results = services_mongo.search_modules_by_query(
+            original_query=original_query, 
+            term=term, 
+            level=level, 
+            instructor=instructor, 
+            student_major=student_major
+        )
+        return jsonify(results)
     except Exception as e:
-        print(f"Mongo Error: {e}")
         return jsonify({"error": str(e)}), 500
-
-    if not mongo_results:
-        return jsonify([])
-
-    module_ids = [res['module_id'] for res in mongo_results]
-    hydrated_results = get_module_details_by_ids_list(module_ids)
-    
-    score_map = {res['module_id']: res['score'] for res in mongo_results}
-    
-    for res in hydrated_results:
-        res['score'] = score_map.get(res['module_id'], 0)
-        # Ensure module_code exists
-        res['module_code'] = res['module_id']
-
-    return jsonify(hydrated_results)
 # =========================================================
 # ENROLLMENT ROUTES
 # =========================================================
