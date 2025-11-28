@@ -121,11 +121,36 @@
         const list = document.getElementById('autocomplete-list');
 
         input.addEventListener('input', () => {
-            const value = input.value.toLowerCase();
             list.innerHTML = '';
-            if (!value) return;
 
-            const matches = instructorNames.filter(name => name.toLowerCase().includes(value));
+            if (instructorNames.length == 0) {
+                const instructors_not_loaded = document.createElement('p');
+                instructors_not_loaded.innerText = "Instructors not loaded. Try again later."
+                instructors_not_loaded.classList.add('text-danger');
+                instructors_not_loaded.classList.add('ms-6', 'me-6', 'mt-1', 'mb-1');
+                list.appendChild(instructors_not_loaded);
+                list.classList.add('show');
+                return;
+            }
+
+            const value = input.value.toLowerCase();
+
+            if (!value) {
+                list.classList.remove('show');
+                return;
+            }
+
+            const matches = instructorNames.filter(name => name.toLowerCase().includes(value)).slice(0, 5);
+            if (matches.length == 0) {
+                const no_instructors_text = document.createElement('p');
+                no_instructors_text.innerText = "No instructors match your query";
+                no_instructors_text.classList.add('text-danger');
+                no_instructors_text.classList.add('ms-6', 'me-6', 'mt-1', 'mb-1');
+                list.appendChild(no_instructors_text);
+                list.classList.add('show');
+                return;
+            }
+
             matches.forEach(name => {
                 const a = document.createElement('a');
                 a.className = 'dropdown-item';

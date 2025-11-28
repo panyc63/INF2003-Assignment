@@ -244,8 +244,20 @@
         const list = document.getElementById('autocomplete-list');
 
         input.addEventListener('input', () => {
-            const value = input.value.toLowerCase();
             list.innerHTML = '';
+            
+            if (allModulesData.length == 0) {
+                const modules_not_loaded = document.createElement('p');
+                modules_not_loaded.innerText = "Modules not loaded. Try again later."
+                modules_not_loaded.classList.add('text-danger');
+                modules_not_loaded.classList.add('ms-6', 'me-6', 'mt-1', 'mb-1');
+                list.appendChild(modules_not_loaded);
+                list.classList.add('show');
+                return;
+            }
+
+            const value = input.value.toLowerCase();
+            
             if (!value) {
                 list.classList.remove('show');
                 return;
