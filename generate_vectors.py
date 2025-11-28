@@ -31,17 +31,20 @@ def generate_and_store_embeddings():
         # ==========================================
         print("\n--- [PART A] Processing MODULES ---")
         
-        # Alias User to fetch Instructor names efficiently
         InstructorUser = aliased(User)
         
+        # UPDATED QUERY: We use .label() to avoid ambiguity and ensure we get the right columns
         sql_modules = sql_db.session.query(
             Module.module_id,
             Module.module_name,
             Module.description,
+            Module.credits,
             Module.academic_term,
+            Module.max_capacity,
+            Module.current_enrollment,
             Module.target_majors,
-            InstructorUser.first_name,
-            InstructorUser.last_name
+            InstructorUser.first_name.label('instr_first'), # <--- Explicit Label
+            InstructorUser.last_name.label('instr_last')    # <--- Explicit Label
         ).outerjoin(Module.instructor)\
          .outerjoin(Instructor.user.of_type(InstructorUser))\
          .all()
@@ -49,41 +52,56 @@ def generate_and_store_embeddings():
         if sql_modules:
             print(f"Found {len(sql_modules)} modules in SQL.")
             
-            # Connect to Mongo Modules Collection
             modules_collection = mongo.db.modules
-            modules_collection.delete_many({}) # Clear old data
+            modules_collection.delete_many({}) 
 
             module_docs = []
             for module in sql_modules:
                 if not module.description:
                     continue
 
-                # Enrich Data for Embedding
-                instructor_name = f"{module.first_name} {module.last_name}" if module.first_name else "TBA"
+                # --- LOGIC FIX ---
+                # We check truthiness (if module.instr_first) which catches both None and Empty Strings
+                if module.instr_first and module.instr_last:
+                    instructor_name = f"{module.instr_first} {module.instr_last}"
+                else:
+                    instructor_name = "TBA"
                 
-                # The text the AI will "read" to find this module
-                text_to_embed = f"{module.module_id} {module.module_name}: {module.description}. Taught by {instructor_name}."
+                # UPDATED EMBEDDING TEXT
+                text_to_embed = (
+                    f"{module.module_id} {module.module_name}: {module.description}. "
+                    f"Taught by {instructor_name}. "
+                    f"Credits: {module.credits}. "
+                    f"Term: {module.academic_term}."
+                )
                 
                 embedding = model.encode(text_to_embed).tolist()
 
-                # Extract Level (e.g., INF1002 -> 1000)
+                # ... (Rest of your level/slots calculation logic remains the same) ...
+                
+                # Logic for level extraction
                 module_level = 1000
                 match = re.search(r'\d', module.module_id)
                 if match:
                     module_level = int(match.group()) * 1000
 
+                # Logic for slots
+                cap = module.max_capacity if module.max_capacity is not None else 0
+                curr = module.current_enrollment if module.current_enrollment is not None else 0
+                slots_left = cap - curr
+
                 # Clean up target majors
-                majors_list = []
-                if module.target_majors:
-                    majors_list = [m.strip() for m in module.target_majors.split(',') if m.strip()]
-                else:
-                    majors_list = ["All"]
+                majors_list = [m.strip() for m in module.target_majors.split(',')] if module.target_majors else ["All"]
 
                 mongo_doc = {
                     "module_id": module.module_id,
                     "module_name": module.module_name,
                     "description": module.description,
                     "embedding": embedding,
+                    "credits": module.credits,
+                    "max_capacity": module.max_capacity,
+                    "current_enrollment": module.current_enrollment,
+                    "slots_left": slots_left,
                     "academic_term": module.academic_term,
                     "module_level": module_level,
                     "instructor_name": instructor_name,
@@ -134,7 +152,13 @@ def generate_and_store_embeddings():
                     instructor_info = sql_db.session.query(Instructor).get(user.user_id)
                     if instructor_info:
                         major_or_dept = instructor_info.department_code
-                        details = f"Title: {instructor_info.title}. Department: {instructor_info.department_code}. Office: {instructor_info.office_location}."
+                        # Added office_hours to details for context
+                        details = (
+                            f"Title: {instructor_info.title}. "
+                            f"Department: {instructor_info.department_code}. "
+                            f"Office: {instructor_info.office_location}. "
+                            f"Hours: {instructor_info.office_hours}."
+                        )
                         role_descriptor = instructor_info.title # e.g., "Professor"
 
                 # 3. Construct Text to Embed
