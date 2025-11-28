@@ -11156,4 +11156,30 @@ h6,
 
 .testimonial-carousel .owl-nav .owl-prev:hover {
   background: #2878EB;
+
+}
+
+.modules-carousel .owl-nav {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+.modules-carousel .owl-nav .owl-prev,
+.modules-carousel .owl-nav .owl-next {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  background: #2878EB;
+  font-size: 22px;
+  transition: .5s;
+  margin: 0 10px;
+}
+
+.modules-carousel .owl-nav .owl-prev:hover,
+.modules-carousel .owl-nav .owl-next:hover {
+  background: #F14D5D;
 }
