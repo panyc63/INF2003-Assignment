@@ -130,18 +130,18 @@
 
             return `
                 <div class="course-item card bg-blue-50 border border-blue-200" id="module-${mid}">
-                    <h4 class="text-xl font-bold text-blue-800 mb-2">
+                    <h4 class="text-xl font-bold text-blue-800 mb-2 ms-4 me-4 mt-2">
                         ${mid} - ${mname} 
                         <span class="text-sm font-normal text-gray-600">(${mcred} Credits)</span>
                     </h4>
-                    <p class="text-sm mb-3">${mdesc}</p>
+                    <p class="text-sm mb-3 ms-4 me-4">${mdesc}</p>
                     <div class="flex justify-between items-center text-sm mb-3">
-                        <span class="font-medium text-gray-700">Enrollment: ${mcurr} / ${mmax}</span>
-                        <button class="btn-secondary text-sm px-3 py-1" onclick="showEnrollments('${mid}', '${mname.replace(/'/g, "\\'")}')">
+                        <span class="font-medium text-gray-700 ms-4 me-4">Enrollment: ${mcurr} / ${mmax}</span>
+                        <button class="btn-secondary text-sm px-3 py-1 ms-4 me-4" onclick="showEnrollments('${mid}', '${mname.replace(/'/g, "\\'")}')">
                             View Students (${mcurr})
                         </button>
                     </div>
-                    <div id="enrollment-details-${mid}" class="hidden mt-3 p-3 bg-white border rounded-lg">
+                    <div id="enrollment-details-${mid}" class="hidden p-3 bg-white border rounded-lg">
                         <p>Loading student list...</p>
                     </div>
                 </div>
@@ -240,7 +240,7 @@
             const students = await apiFetch(`/api/module/${moduleId}/students`);
 
             if (!students || students.length === 0) {
-                detailsDiv.innerHTML = `<p class="text-center text-gray-500">No students currently enrolled in ${moduleTitle}.</p>`;
+                detailsDiv.innerHTML = `<p class="text-center text-gray-500">No students currently enrolled in <b>${moduleTitle}</b>.</p>`;
                 return;
             }
 
