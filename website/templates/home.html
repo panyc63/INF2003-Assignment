@@ -273,13 +273,13 @@
             if (dashboardBtn) dashboardBtn.classList.add('d-none');
 
             suggestionChips.innerHTML = `
-                <span class="badge badge-light badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('computer science')">
+                <span class="badge badge-light badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="performSearch('computer science'); document.getElementById('hero-search-input').value = 'computer science';">
                     <i class="fa fa-laptop-code mr-1"></i>Computer Science
                 </span>
-                <span class="badge badge-light badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('mathematics')">
+                <span class="badge badge-light badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="performSearch('mathematics'); document.getElementById('hero-search-input').value = 'mathematics';">
                     <i class="fa fa-calculator mr-1"></i>Mathematics
                 </span>
-                <span class="badge badge-light badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('Alan Turing')">
+                <span class="badge badge-light badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="performSearch('Alan Turing'); document.getElementById('hero-search-input').value = 'Alan Turing';">
                     <i class="fa fa-user mr-1"></i>Alan Turing
                 </span>
             `;
@@ -294,13 +294,13 @@
             if (dashboardBtn) dashboardBtn.classList.remove('d-none');
 
             suggestionChips.innerHTML = `
-                <span class="badge badge-primary badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('my modules next trimester')">
+                <span class="badge badge-primary badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="performSearch('my modules next trimester'); document.getElementById('hero-search-input').value = 'my modules next trimester';">
                     <i class="fa fa-calendar mr-1"></i>Next Trimester
                 </span>
-                <span class="badge badge-info badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('my enrolled courses')">
+                <span class="badge badge-info badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="performSearch('my enrolled courses'); document.getElementById('hero-search-input').value = 'my enrolled courses';">
                     <i class="fa fa-book-open mr-1"></i>My Enrollments
                 </span>
-                <span class="badge badge-success badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('web development')">
+                <span class="badge badge-success badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="performSearch('web development'); document.getElementById('hero-search-input').value = 'web development';">
                     <i class="fa fa-code mr-1"></i>Web Development
                 </span>
             `;
@@ -318,10 +318,10 @@
             if (dashboardBtn) dashboardBtn.classList.remove('d-none');
 
             suggestionChips.innerHTML = `
-                <span class="badge badge-warning badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('my modules next trimester')">
+                <span class="badge badge-warning badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="performSearch('my modules next trimester'); document.getElementById('hero-search-input').value = 'my modules next trimester';">
                     <i class="fa fa-chalkboard-teacher mr-1"></i>My Modules
                 </span>
-                <span class="badge badge-info badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('my courses this term')">
+                <span class="badge badge-info badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="performSearch('my courses this term'); document.getElementById('hero-search-input').value = 'my courses this term';">
                     <i class="fa fa-calendar-check mr-1"></i>Current Term
                 </span>
             `;
