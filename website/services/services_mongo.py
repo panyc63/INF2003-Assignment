@@ -21,13 +21,14 @@ def search_modules_by_query(original_query, term=None, level=None, instructor=No
 
     # --- 1. EXACT MATCH CHECK (Regex) ---
     clean_query = original_query.replace(" ", "")
-    module_code_pattern = re.compile(r'^[a-zA-Z]{1,4}\d{3,4}[a-zA-Z]?$')
+    module_code_pattern = re.compile(r'^(?:[a-zA-Z]{1,4})?\d{3,4}[a-zA-Z]?$')
     print(module_code_pattern.match(clean_query))
     
     if module_code_pattern.match(clean_query):
         # Look in 'modules' collection
         exact_matches = list(mongo.db.modules.find(
-            {"module_id": {"$regex": f"^{clean_query}$", "$options": "i"}},
+            # Your current query
+            {"module_id": {"$regex": f".*{clean_query}$", "$options": "i"}},
             {"_id": 0, "module_id": 1}
         ))
         
@@ -95,7 +96,7 @@ def search_modules_by_query(original_query, term=None, level=None, instructor=No
         res['score'] = score_map.get(res['module_id'], 0)
         # Ensure module_code exists
         res['module_code'] = res['module_id']
-
+    hydrated_results.sort(key=lambda x: x.get('score', 0), reverse=True)
     return hydrated_results
 
 def get_module_data():
@@ -130,11 +131,11 @@ def get_module_data():
                 "max_capacity": 1,
                 "current_enrollment": 1,
                 "created_at": 1,
-                # Concat name if exists, else TBA
+                # Concat name if exists, else TBA,
                 "instructor_name": {
                     "$cond": {
-                        "if": {"$ifNull": ["$instructor_info", False]},
-                        "then": {"$concat": ["$instructor_info.first_name", " ", "$instructor_info.last_name"]},
+                        "if": {"$ifNull": ["$instructor_name", False]},
+                        "then": "$instructor_name",
                         "else": "TBA"
                     }
                 }

@@ -7,14 +7,18 @@
 {% block content %}
 <!-- Hero Section with Smart Search -->
 <div class="container-fluid py-5"
-    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 70vh;">
+    style="background: linear-gradient(135deg, #667eea 0%, #2d9cc8 100%); min-height: 70vh;">
     <div class="container py-5">
         <div class="row align-items-center">
             <div class="col-lg-8 mx-auto text-center text-white">
                 <h1 class="display-3 font-weight-bold mb-4" id="hero-title">Discover Your Perfect Module</h1>
                 <p class="lead mb-5" id="hero-subtitle">Use natural language to find courses - try "web development next
                     trimester" or "Alan Turing's classes"</p>
-
+                <div id="dashboard-container" class="mb-5 d-none">
+                    <a href="/dashboard" class="btn btn-primary btn-lg shadow-sm px-5 font-weight-bold rounded-pill">
+                        <i class="fa fa-columns mr-2"></i>View Your Dashboard
+                    </a>
+                </div>
                 <!-- Smart Search Bar -->
                 <div class="card shadow-lg border-0">
                     <div class="card-body p-4">
@@ -255,12 +259,18 @@
         const suggestionChips = document.getElementById('suggestion-chips');
         const featuredTitle = document.getElementById('featured-title');
 
+        // Get the dashboard container
+        const dashboardBtn = document.getElementById('dashboard-container');
+
         if (!currentUserState.loggedIn) {
-            // Guest user
+            // --- Guest user ---
             heroTitle.textContent = 'Discover Your Perfect Module';
             heroSubtitle.textContent = 'Use natural language to find courses - try "web development" or "Alan Turing\'s classes"';
             searchInput.placeholder = 'Try: "computer science courses" or "mathematics modules"';
             featuredTitle.textContent = 'Popular Modules';
+
+            // Ensure dashboard button is hidden
+            if (dashboardBtn) dashboardBtn.classList.add('d-none');
 
             suggestionChips.innerHTML = `
                 <span class="badge badge-light badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('computer science')">
@@ -274,11 +284,14 @@
                 </span>
             `;
         } else if (currentUserState.userRole === 'student') {
-            // Student user
+            // --- Student user ---
             heroTitle.textContent = `Welcome back, ${currentUserState.userName}!`;
             heroSubtitle.textContent = 'Looking for modules? Try "my schedule next trimester" or "web development courses"';
             searchInput.placeholder = 'Try: "my modules next trimester" or "web development year 2"';
             featuredTitle.textContent = 'Recommended For You';
+
+            // SHOW DASHBOARD BUTTON
+            if (dashboardBtn) dashboardBtn.classList.remove('d-none');
 
             suggestionChips.innerHTML = `
                 <span class="badge badge-primary badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('my modules next trimester')">
@@ -295,11 +308,14 @@
             // Load and show student stats
             await loadStudentStats();
         } else if (currentUserState.userRole === 'instructor') {
-            // Instructor user
+            // --- Instructor user ---
             heroTitle.textContent = `Welcome, Professor ${currentUserState.userName}`;
             heroSubtitle.textContent = 'Manage your modules and track student enrollment';
             searchInput.placeholder = 'Try: "my modules next trimester" or search for any course';
             featuredTitle.textContent = 'Your Modules';
+
+            // SHOW DASHBOARD BUTTON
+            if (dashboardBtn) dashboardBtn.classList.remove('d-none');
 
             suggestionChips.innerHTML = `
                 <span class="badge badge-warning badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('my modules next trimester')">
@@ -311,7 +327,6 @@
             `;
         }
     }
-
     async function loadStudentStats() {
         if (!currentUserState.studentId) return;
 
@@ -397,11 +412,123 @@
         await performSearch(query);
     }
 
-    function quickSearch(query) {
-        document.getElementById('hero-search-input').value = query;
-        performSearch(query);
-    }
+    function extractFilters(query) {
+        let targetYear = null;
+        let targetTri = null;
 
+        // 1. Pre-process: Normalize to lowercase
+        let processed = query.toLowerCase();
+
+        // 2. Helper: Convert Words to Numbers
+        // Includes "Final Year" common in SIT context
+        const wordMap = {
+            'one': '1', 'two': '2', 'three': '3', 'four': '4',
+            'first': '1', 'second': '2', 'third': '3', 'fourth': '4',
+            'freshman': '1', 'freshie': '1', // SIT Slang
+            'sophomore': '2',
+            'junior': '3',
+            'senior': '4', 'final year': '4'
+        };
+
+        // Replace number words with digits safely (word boundary check)
+        for (const [word, num] of Object.entries(wordMap)) {
+            processed = processed.replace(new RegExp(`\\b${word}\\b`, 'g'), num);
+        }
+
+        // 3. SIT Academic Calendar Mapping (Months/Seasons -> Trimesters)
+        // T1: Sep-Dec | T2: Jan-Apr | T3: May-Aug
+        const triMap = {
+            't1': ['fall', 'sep', 'september', 'oct', 'october', 'nov', 'november', 'dec', 'december'],
+            't2': ['spring', 'jan', 'january', 'feb', 'february', 'mar', 'march', 'apr', 'april'],
+            't3': ['summer', 'may', 'jun', 'june', 'jul', 'july', 'aug', 'august']
+        };
+
+        for (const [tri, keywords] of Object.entries(triMap)) {
+            const pattern = new RegExp(`\\b(${keywords.join('|')})\\b`, 'g');
+            processed = processed.replace(pattern, tri); // Replace months with 't1', 't2', 't3'
+        }
+
+        // 4. Regex Patterns for Year/Tri Extraction
+
+        // Pattern A: Tight codes (e.g., "y1t1", "y3t2")
+        const tightCodeRegex = /\by(\d)t(\d)\b/;
+
+        // Pattern B: Verbose "Year X Trimester Y" (handles "Sem", "Tri", "Term")
+        // Matches: "Year 1 Tri 2", "Yr 2 Sem 1", "Y3 Term 2"
+        const yearFirstRegex = /\by(?:ear|r)?\s*(\d)\s*(?:trimester|tri|term|sem|semester|t)\s*(\d)\b/;
+
+        // Pattern C: Verbose "Trimester Y Year X"
+        // Matches: "Tri 1 Year 2", "Sem 2 Yr 3", "T1 Y4"
+        const triFirstRegex = /\b(?:trimester|tri|term|sem|semester|t)\s*(\d)\s*y(?:ear|r)?\s*(\d)\b/;
+
+        // Pattern D: Standalone Year (e.g., "Year 1", "Y2")
+        const yearOnlyRegex = /\by(?:ear|r)?\s*(\d)\b/;
+
+        // Pattern E: Standalone Tri (e.g., "Tri 1", "Sem 2", "T3")
+        const triOnlyRegex = /\b(?:trimester|tri|term|sem|semester|t)\s*(\d)\b/;
+
+        // Pattern F: Level codes (e.g., "1000", "2000" level modules)
+        const levelRegex = /\b(\d)000\b/;
+
+        // 5. Execution Logic (Priority: Specific Combinations -> Single Constraints)
+
+        let match;
+
+        if ((match = processed.match(tightCodeRegex))) {
+            targetYear = parseInt(match[1]);
+            targetTri = parseInt(match[2]);
+        }
+        else if ((match = processed.match(yearFirstRegex))) {
+            targetYear = parseInt(match[1]);
+            targetTri = parseInt(match[2]);
+        }
+        else if ((match = processed.match(triFirstRegex))) {
+            targetTri = parseInt(match[1]);
+            targetYear = parseInt(match[2]);
+        }
+        else {
+            // Look for independent Year/Tri
+            const yMatch = processed.match(yearOnlyRegex);
+            const tMatch = processed.match(triOnlyRegex);
+            const lMatch = processed.match(levelRegex);
+
+            if (yMatch) targetYear = parseInt(yMatch[1]);
+            if (tMatch) targetTri = parseInt(tMatch[1]);
+
+            // Fallback: If no year found, check for "1000/2000" syntax
+            if (!targetYear && lMatch) {
+                targetYear = parseInt(lMatch[1]);
+            }
+        }
+
+        // 6. Cleanup Query
+        // Remove the detected constraints so the search string is clean
+        let cleanedQuery = query; // Start with original query to preserve casing of other words
+
+        // Helper to remove patterns case-insensitively
+        const removePattern = (regex) => {
+            cleanedQuery = cleanedQuery.replace(new RegExp(regex, 'gi'), '');
+        };
+
+        // Remove specific patterns found in Step 4
+        removePattern(/y(\d)t(\d)/); // y1t1
+        removePattern(/y(ear|r)?\s*(\d|one|two|three|four|first|second|third|fourth)/); // Year X
+        removePattern(/(trimester|tri|term|sem|semester|t)\s*(\d|one|two|three)/); // Tri X
+        removePattern(/\b(fall|spring|summer|sep|september|jan|january|may)\b/); // Seasons/Months
+
+        // Remove filler words common in student queries
+        const fillerWords = [
+            'my', 'courses', 'course', 'modules', 'module', 'mod',
+            'classes', 'class', 'in', 'by', 'for', 'of',
+            'schedule', 'enrolled', 'completed', 'taking', 'plan'
+        ];
+        removePattern(`\\b(${fillerWords.join('|')})\\b`);
+
+        // Final trim
+        cleanedQuery = cleanedQuery.replace(/\s+/g, ' ').trim();
+
+        return { targetYear, targetTri, cleanedQuery };
+    }
     function extractFilters(query) {
         let targetYear = null;
         let targetTri = null;

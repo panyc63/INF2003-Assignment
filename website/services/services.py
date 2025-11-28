@@ -3,7 +3,7 @@ from . import services_mongo as mongo_service
 
 # Global variable to track the active provider
 CURRENT_PROVIDER = "sql"
-_active_service = sql_service
+_active_service = mongo_service
 
 def set_db_provider(provider_name):
     """Switches the backend service module."""
