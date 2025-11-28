@@ -260,13 +260,12 @@ def delete_user(user_id):
 
 # fetch full user profile
 def get_user_full_details(user_id):
-    sql = text("""
-        SELECT u.*, s.major, s.enrollment_year, i.department_code, i.title
-        FROM users u
-        LEFT JOIN students s ON u.user_id = s.student_id
-        LEFT JOIN instructors i ON u.user_id = i.instructor_id
-        WHERE u.user_id = :id
-    """)
+    sql = text("""SELECT u.user_id, u.first_name, u.last_name, u.email, u.role, u.university_id, s.major, s.enrollment_year,
+               i.department_code, i.title
+               FROM users u
+               LEFT JOIN students s ON u.user_id = s.student_id
+               LEFT JOIN instructors i ON u.user_id = i.instructor_id
+               WHERE u.user_id = :id""")
     row = db.session.execute(sql, {"id": user_id}).first()
     if row:
         return {
