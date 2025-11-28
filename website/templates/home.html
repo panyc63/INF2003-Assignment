@@ -1,77 +1,158 @@
 {% extends "base.html" %}
 
-{% block title %}Edukate - Online Education{% endblock %}
+{% block title %}Edukate - Smart Module Discovery{% endblock %}
 
 {% block page_title %}Edukate Home{% endblock %}
 
 {% block content %}
+<!-- Hero Section with Smart Search -->
+<div class="container-fluid py-5"
+    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 70vh;">
+    <div class="container py-5">
+        <div class="row align-items-center">
+            <div class="col-lg-8 mx-auto text-center text-white">
+                <h1 class="display-3 font-weight-bold mb-4" id="hero-title">Discover Your Perfect Module</h1>
+                <p class="lead mb-5" id="hero-subtitle">Use natural language to find courses - try "web development next
+                    trimester" or "Alan Turing's classes"</p>
+
+                <!-- Smart Search Bar -->
+                <div class="card shadow-lg border-0">
+                    <div class="card-body p-4">
+                        <form id="hero-search-form" class="mb-3">
+                            <div class="input-group input-group-lg">
+                                <input type="text" id="hero-search-input" class="form-control border-0"
+                                    placeholder="Try: 'web development courses' or 'my modules next trimester'"
+                                    style="font-size: 1.1rem;">
+                                <div class="input-group-append">
+                                    <button class="btn btn-primary px-5" type="submit">
+                                        <i class="fa fa-search mr-2"></i>Search
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- Dynamic Search Suggestions -->
+                        <div id="search-suggestions" class="text-left">
+                            <small class="text-muted">Try searching: </small>
+                            <div id="suggestion-chips" class="d-inline-flex flex-wrap gap-2 mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Stats (for logged-in students) -->
+                <div id="student-quick-stats" class="mt-4 d-none">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="bg-white bg-opacity-25 rounded p-3">
+                                <h3 class="mb-0" id="stat-enrolled">0</h3>
+                                <small>Current Enrollments</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="bg-white bg-opacity-25 rounded p-3">
+                                <h3 class="mb-0" id="stat-completed">0</h3>
+                                <small>Completed Modules</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="bg-white bg-opacity-25 rounded p-3">
+                                <h3 class="mb-0" id="stat-gpa">N/A</h3>
+                                <small>Current GPA</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Results Section (Initially Hidden) -->
+<div id="search-results-section" class="container-fluid py-5 d-none">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Search Results</h2>
+            <button class="btn btn-outline-secondary" onclick="clearSearchResults()">
+                <i class="fa fa-times mr-2"></i>Clear Results
+            </button>
+        </div>
+        <div id="search-results-container" class="row"></div>
+        <div id="search-pagination" class="mt-4 d-flex justify-content-center"></div>
+    </div>
+</div>
+
+<!-- Why Choose Us Section -->
 <div class="container-fluid py-5">
     <div class="container py-5">
         <div class="row">
             <div class="col-lg-7 mb-5 mb-lg-0">
                 <div class="section-title position-relative mb-4">
                     <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Why Choose Us?</h6>
-                    <h1 class="display-4">Best Modules for Your Future</h1>
+                    <h1 class="display-4">Smart Module Discovery</h1>
                 </div>
-                <p class="mb-4 pb-2">Join a community of learners and master new skills with our expert-led courses. Flexible learning for a modern world.</p>
+                <p class="mb-4 pb-2">Our intelligent search understands what you're looking for - whether it's by topic,
+                    instructor, semester, or year level.</p>
                 <div class="d-flex mb-3">
                     <div class="btn-icon bg-primary mr-4">
-                        <i class="fa fa-2x fa-graduation-cap text-white"></i>
+                        <i class="fa fa-2x fa-brain text-white"></i>
                     </div>
                     <div class="mt-n1">
-                        <h4>Skilled Instructors</h4>
-                        <p>Learn from industry experts with real-world experience.</p>
+                        <h4>Natural Language Search</h4>
+                        <p>Search like you speak - "courses next trimester" or "Alan Turing's classes"</p>
                     </div>
                 </div>
                 <div class="d-flex mb-3">
                     <div class="btn-icon bg-secondary mr-4">
-                        <i class="fa fa-2x fa-certificate text-white"></i>
+                        <i class="fa fa-2x fa-filter text-white"></i>
                     </div>
                     <div class="mt-n1">
-                        <h4>International Certificate</h4>
-                        <p>Earn recognized certificates to boost your career.</p>
+                        <h4>Smart Filtering</h4>
+                        <p>Automatically detects terms, years, instructors, and topics from your query</p>
                     </div>
                 </div>
                 <div class="d-flex">
                     <div class="btn-icon bg-warning mr-4">
-                        <i class="fa fa-2x fa-book-reader text-white"></i>
+                        <i class="fa fa-2x fa-user-check text-white"></i>
                     </div>
                     <div class="mt-n1">
-                        <h4>Online Classes</h4>
-                        <p class="m-0">Access content anytime, anywhere, on any device.</p>
+                        <h4>Personalized Results</h4>
+                        <p class="m-0">Shows your enrollment status and recommends modules for your major</p>
                     </div>
                 </div>
             </div>
             <div class="col-lg-5" style="min-height: 500px;">
                 <div class="position-relative h-100">
-                    <img class="position-absolute w-100 h-100" src="{{ url_for('static', filename='img/feature.jpg') }}" style="object-fit: cover;">
+                    <img class="position-absolute w-100 h-100" src="{{ url_for('static', filename='img/feature.jpg') }}"
+                        style="object-fit: cover;">
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Featured Modules Section -->
 <div class="container-fluid py-5">
     <div class="container py-5">
         <div class="row mx-0 justify-content-center">
             <div class="col-lg-8">
                 <div class="section-title text-center position-relative mb-5">
-                    <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Our Modules</h6>
-                    <h1 class="display-4">Checkout New Releases</h1>
+                    <h6 class="d-inline-block position-relative text-secondary text-uppercase pb-2">Popular Modules</h6>
+                    <h1 class="display-4" id="featured-title">Trending Now</h1>
                 </div>
             </div>
         </div>
-        
+
         <div id="modules-container" class="owl-carousel modules-carousel">
             <div class="text-center p-5">
-                 <div class="spinner-border text-primary" role="status">
-                     <span class="sr-only">Loading...</span>
-                 </div>
-             </div>
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
+<!-- Instructors Section -->
 <div class="container-fluid py-5">
     <div class="container pt-5 pb-3">
         <div class="row mx-0 justify-content-center">
@@ -124,28 +205,144 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', loadHomeModules);
+    // Global state from localStorage
+    let currentUserState = {
+        loggedIn: false,
+        userId: null,
+        userRole: null,
+        userName: null,
+        studentId: null,
+        instructorId: null
+    };
 
-    async function loadHomeModules() {
-            const container = document.getElementById('modules-container');
-        
+    let allModules = [];
+    let studentEnrollments = [];
+    let searchResultsCache = [];
+    let currentSearchPage = 1;
+    const resultsPerPage = 6;
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', async () => {
+        loadUserState();
+        customizeForUser();
+        await loadModules();
+        document.getElementById('hero-search-form').addEventListener('submit', handleHeroSearch);
+    });
+
+    function loadUserState() {
+        const userId = localStorage.getItem('user_id');
+        const userRole = localStorage.getItem('user_role');
+        const userName = localStorage.getItem('user_name');
+        const studentId = localStorage.getItem('student_id');
+        const instructorId = localStorage.getItem('instructor_id');
+
+        if (userId && userRole) {
+            currentUserState = {
+                loggedIn: true,
+                userId: parseInt(userId),
+                userRole: userRole,
+                userName: userName,
+                studentId: studentId ? parseInt(studentId) : null,
+                instructorId: instructorId ? parseInt(instructorId) : null
+            };
+        }
+    }
+
+    async function customizeForUser() {
+        const heroTitle = document.getElementById('hero-title');
+        const heroSubtitle = document.getElementById('hero-subtitle');
+        const searchInput = document.getElementById('hero-search-input');
+        const suggestionChips = document.getElementById('suggestion-chips');
+        const featuredTitle = document.getElementById('featured-title');
+
+        if (!currentUserState.loggedIn) {
+            // Guest user
+            heroTitle.textContent = 'Discover Your Perfect Module';
+            heroSubtitle.textContent = 'Use natural language to find courses - try "web development" or "Alan Turing\'s classes"';
+            searchInput.placeholder = 'Try: "computer science courses" or "mathematics modules"';
+            featuredTitle.textContent = 'Popular Modules';
+
+            suggestionChips.innerHTML = `
+                <span class="badge badge-light badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('computer science')">
+                    <i class="fa fa-laptop-code mr-1"></i>Computer Science
+                </span>
+                <span class="badge badge-light badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('mathematics')">
+                    <i class="fa fa-calculator mr-1"></i>Mathematics
+                </span>
+                <span class="badge badge-light badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('Alan Turing')">
+                    <i class="fa fa-user mr-1"></i>Alan Turing
+                </span>
+            `;
+        } else if (currentUserState.userRole === 'student') {
+            // Student user
+            heroTitle.textContent = `Welcome back, ${currentUserState.userName}!`;
+            heroSubtitle.textContent = 'Looking for modules? Try "my schedule next trimester" or "web development courses"';
+            searchInput.placeholder = 'Try: "my modules next trimester" or "web development year 2"';
+            featuredTitle.textContent = 'Recommended For You';
+
+            suggestionChips.innerHTML = `
+                <span class="badge badge-primary badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('my modules next trimester')">
+                    <i class="fa fa-calendar mr-1"></i>Next Trimester
+                </span>
+                <span class="badge badge-info badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('my enrolled courses')">
+                    <i class="fa fa-book-open mr-1"></i>My Enrollments
+                </span>
+                <span class="badge badge-success badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('web development')">
+                    <i class="fa fa-code mr-1"></i>Web Development
+                </span>
+            `;
+
+            // Load and show student stats
+            await loadStudentStats();
+        } else if (currentUserState.userRole === 'instructor') {
+            // Instructor user
+            heroTitle.textContent = `Welcome, Professor ${currentUserState.userName}`;
+            heroSubtitle.textContent = 'Manage your modules and track student enrollment';
+            searchInput.placeholder = 'Try: "my modules next trimester" or search for any course';
+            featuredTitle.textContent = 'Your Modules';
+
+            suggestionChips.innerHTML = `
+                <span class="badge badge-warning badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('my modules next trimester')">
+                    <i class="fa fa-chalkboard-teacher mr-1"></i>My Modules
+                </span>
+                <span class="badge badge-info badge-pill px-3 py-2 mr-2 cursor-pointer" onclick="quickSearch('my courses this term')">
+                    <i class="fa fa-calendar-check mr-1"></i>Current Term
+                </span>
+            `;
+        }
+    }
+
+    async function loadStudentStats() {
+        if (!currentUserState.studentId) return;
+
         try {
-            // Fetch data from API
-            const modules = await apiFetch('/api/modules');
-            
-            if (!modules || modules.length === 0) {
-                container.innerHTML = '<div class="text-center w-100">No modules available at the moment.</div>';
+            studentEnrollments = await apiFetch(`/api/student/${currentUserState.studentId}/enrollments`);
+            const enrolled = studentEnrollments.filter(e => e.status === 'Enrolled');
+            const completed = studentEnrollments.filter(e => e.status === 'Completed');
+
+            document.getElementById('stat-enrolled').textContent = enrolled.length;
+            document.getElementById('stat-completed').textContent = completed.length;
+
+            // Show stats section
+            document.getElementById('student-quick-stats').classList.remove('d-none');
+        } catch (error) {
+            console.error('Failed to load student stats:', error);
+        }
+    }
+
+    async function loadModules() {
+        const container = document.getElementById('modules-container');
+        try {
+            allModules = await apiFetch('/api/modules');
+            if (!allModules || allModules.length === 0) {
+                container.innerHTML = '<div class="text-center w-100">No modules available.</div>';
                 return;
             }
 
-            // Generate HTML for modules
-            // Limit to first 6 for the homepage carousel
-            const featuredModules = modules.slice(0, 6);
-            
+            const featuredModules = allModules.slice(0, 6);
             let htmlContent = featuredModules.map((module, index) => {
-                const imgNum = (index % 6) + 1; // Cycle images 1-6
+                const imgNum = (index % 6) + 1;
                 const detailUrl = `/module/${module.module_id}`;
-                
                 return `
                 <div class="modules-list-item position-relative d-block overflow-hidden mb-2" style="margin-right: 10px;">
                     <a href="${detailUrl}">
@@ -160,42 +357,315 @@
                             </div>
                         </div>
                     </a>
-                </div>
-                `;
+                </div>`;
             }).join('');
 
-            // Destroy existing carousel if initialized (rare on first load but good practice)
             if ($(container).data('owl.carousel')) {
                 $(container).trigger('destroy.owl.carousel');
             }
 
-            // Inject HTML
             container.innerHTML = htmlContent;
 
-            // Initialize Owl Carousel
             $(container).owlCarousel({
                 autoplay: true,
                 smartSpeed: 1500,
                 items: 1,
                 dots: false,
                 loop: true,
-                nav : true,
-                navText : [
+                nav: true,
+                navText: [
                     '<i class="fa fa-angle-left" aria-hidden="true"></i>',
                     '<i class="fa fa-angle-right" aria-hidden="true"></i>'
                 ],
                 responsive: {
-                    0:{ items:1 },
-                    576:{ items:1 },
-                    768:{ items:2 },
-                    992:{ items:3 }
+                    0: { items: 1 },
+                    576: { items: 1 },
+                    768: { items: 2 },
+                    992: { items: 3 }
                 }
             });
-
         } catch (error) {
             console.error('Failed to load modules:', error);
             container.innerHTML = '<div class="text-center text-danger w-100">Failed to load modules.</div>';
         }
     }
+
+    async function handleHeroSearch(event) {
+        event.preventDefault();
+        const query = document.getElementById('hero-search-input').value.trim();
+        if (!query) return;
+        await performSearch(query);
+    }
+
+    function quickSearch(query) {
+        document.getElementById('hero-search-input').value = query;
+        performSearch(query);
+    }
+
+    function extractFilters(query) {
+        let targetYear = null;
+        let targetTri = null;
+        let processed = query.toLowerCase();
+
+        const wordMap = {
+            'one': '1', 'two': '2', 'three': '3', 'four': '4',
+            'first': '1', 'second': '2', 'third': '3', 'fourth': '4',
+            'freshman': '1', 'sophomore': '2', 'junior': '3', 'senior': '4'
+        };
+        for (const [word, num] of Object.entries(wordMap)) {
+            processed = processed.replace(new RegExp(`\\b${word}\\b`, 'g'), num);
+        }
+
+        processed = processed.replace(/\b(fall|sep|september)\b/g, 't1');
+        processed = processed.replace(/\b(spring|jan|january)\b/g, 't2');
+        processed = processed.replace(/\b(summer|may)\b/g, 't3');
+        processed = processed.replace(/\b(year|yr)\b/g, 'y');
+        processed = processed.replace(/\b(trimester|tri|term|sem|semester)\b/g, 't');
+
+        const combinedMatch = processed.match(/y\s*(\d)\s*t\s*(\d)|t\s*(\d)\s*y\s*(\d)/);
+        if (combinedMatch) {
+            if (combinedMatch[1]) {
+                targetYear = parseInt(combinedMatch[1]);
+                targetTri = parseInt(combinedMatch[2]);
+            } else {
+                targetTri = parseInt(combinedMatch[3]);
+                targetYear = parseInt(combinedMatch[4]);
+            }
+        } else {
+            const yearMatch = processed.match(/y\s*(\d)/);
+            const triMatch = processed.match(/t\s*(\d)/);
+            if (yearMatch) targetYear = parseInt(yearMatch[1]);
+            if (triMatch) targetTri = parseInt(triMatch[1]);
+            if (!targetYear) {
+                const levelMatch = processed.match(/(\d)000/);
+                if (levelMatch) targetYear = parseInt(levelMatch[1]);
+            }
+        }
+
+        let cleanedQuery = query;
+        cleanedQuery = cleanedQuery.replace(/y(ear|r)?\s?(\d|one|two|three|four|first|second|third|fourth)/gi, '');
+        cleanedQuery = cleanedQuery.replace(/t(ri(mester)?|erm|sem(ester)?)?\s?(\d|one|two|three)/gi, '');
+        cleanedQuery = cleanedQuery.replace(/fall|spring|summer|sep|jan|may/gi, '');
+        cleanedQuery = cleanedQuery.replace(/y\d\s?t\d/gi, '');
+        cleanedQuery = cleanedQuery.replace(/\b(my|courses|course|modules|module|classes|class|in|by|for|of|schedule|enrolled|completed)\b/gi, '');
+        cleanedQuery = cleanedQuery.replace(/\s+/g, ' ').trim();
+
+        return { targetYear, targetTri, cleanedQuery };
+    }
+
+    async function performSearch(query) {
+        const resultsSection = document.getElementById('search-results-section');
+        const resultsContainer = document.getElementById('search-results-container');
+
+        resultsContainer.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div></div>';
+        resultsSection.classList.remove('d-none');
+        resultsSection.scrollIntoView({ behavior: 'smooth' });
+
+        try {
+            const { targetYear, targetTri, cleanedQuery } = extractFilters(query);
+
+            let termCode = null;
+            if (targetYear && targetTri) {
+                termCode = `Y${targetYear}T${targetTri}`;
+            }
+
+            // LOCAL SEARCH for students/instructors
+            const lowerQuery = query.toLowerCase();
+            const localKeywords = ['my', 'enrolled', 'completed', 'schedule'];
+            const isLocalSearch = localKeywords.some(kw => lowerQuery.includes(kw));
+
+            if (isLocalSearch && currentUserState.userRole === 'student' && studentEnrollments.length > 0) {
+                // Search within student's enrollments
+                const results = studentEnrollments.filter(c => {
+                    if (termCode) {
+                        if (!c.academic_term || !c.academic_term.toUpperCase().includes(termCode)) return false;
+                    }
+                    else if (targetYear) {
+                        const levelDigit = c.module_id.match(/\d/);
+                        if (levelDigit && parseInt(levelDigit[0]) !== targetYear) return false;
+                    }
+                    if (cleanedQuery.length > 0) {
+                        const corpus = `${c.module_name.toLowerCase()} ${c.module_id.toLowerCase()}`;
+                        return corpus.includes(cleanedQuery.toLowerCase());
+                    }
+                    return true;
+                });
+                displaySearchResults(results, true);
+            } else if (isLocalSearch && currentUserState.userRole === 'instructor') {
+                // Search instructor's modules
+                let params = new URLSearchParams();
+                params.set('instructor_id', currentUserState.instructorId);
+                if (termCode) params.set('term', termCode);
+                else if (targetYear) params.set('level', targetYear * 1000);
+                params.set('q', cleanedQuery || 'all');
+
+                const results = await apiFetch(`/api/search?${params.toString()}`);
+                displaySearchResults(results, false);
+            } else {
+                // GLOBAL SEARCH
+                let params = new URLSearchParams();
+                if (currentUserState.userRole === 'student' && currentUserState.studentId) {
+                    // Optionally add major filtering for students
+                    const studentData = await apiFetch(`/api/students/${currentUserState.studentId}`);
+                    if (studentData && studentData.major_id) {
+                        params.set('major', studentData.major_id);
+                    }
+                }
+
+                if (termCode) {
+                    params.set('term', termCode);
+                } else if (targetYear) {
+                    params.set('level', targetYear * 1000);
+                }
+
+                params.set('q', cleanedQuery || 'all');
+
+                const results = await apiFetch(`/api/search?${params.toString()}`);
+                displaySearchResults(results, false);
+            }
+        } catch (error) {
+            console.error('Search failed:', error);
+            resultsContainer.innerHTML = '<div class="col-12 text-center text-danger py-5">Search failed. Please try again.</div>';
+        }
+    }
+
+    function displaySearchResults(results, isLocalSearch = false) {
+        const resultsContainer = document.getElementById('search-results-container');
+
+        if (!results || results.length === 0) {
+            resultsContainer.innerHTML = '<div class="col-12 text-center text-muted py-5">No modules found matching your search.</div>';
+            return;
+        }
+
+        searchResultsCache = results;
+        currentSearchPage = 1;
+
+        // Add visual indicator for local vs global search
+        const searchTypeLabel = isLocalSearch
+            ? '<div class="col-12 mb-3"><span class="badge badge-info"><i class="fa fa-user mr-1"></i>Searching in your enrollments</span></div>'
+            : '';
+
+        renderSearchPage(isLocalSearch, searchTypeLabel);
+    }
+
+    let isCurrentSearchLocal = false;
+
+    function renderSearchPage(isLocal = false, searchTypeLabel = '') {
+        isCurrentSearchLocal = isLocal;
+        const resultsContainer = document.getElementById('search-results-container');
+        const startIdx = (currentSearchPage - 1) * resultsPerPage;
+        const endIdx = startIdx + resultsPerPage;
+        const pageResults = searchResultsCache.slice(startIdx, endIdx);
+
+        const enrolledIds = new Set(studentEnrollments.map(e => e.module_id));
+
+        const html = searchTypeLabel + pageResults.map((module, idx) => {
+            const imgNum = ((startIdx + idx) % 6) + 1;
+            const isEnrolled = enrolledIds.has(module.module_id);
+            const detailUrl = `/module/${module.module_id}`;
+
+            // Show status badge for local searches
+            let statusBadge = '';
+            if (isLocal && module.status) {
+                const badgeClass = module.status === 'Enrolled' ? 'badge-primary' : 'badge-success';
+                statusBadge = `<span class="badge ${badgeClass} mt-2">${module.status}</span>`;
+            } else if (isEnrolled) {
+                statusBadge = '<span class="badge badge-success mt-2">Enrolled</span>';
+            }
+
+            return `
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <img src="/static/img/modules-${imgNum}.jpg" class="card-img-top" alt="${module.module_name}" style="height: 200px; object-fit: cover;">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary">${module.module_id}</h5>
+                        <h6 class="card-subtitle mb-2 text-muted">${module.module_name}</h6>
+                        <p class="card-text text-sm">${(module.description || '').substring(0, 100)}...</p>
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <small class="text-muted">
+                                <i class="fa fa-user mr-1"></i>${module.instructor_name || 'TBA'}
+                            </small>
+                            <small class="text-muted">
+                                <i class="fa fa-book mr-1"></i>${module.credits} Credits
+                            </small>
+                        </div>
+                        ${statusBadge}
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <a href="${detailUrl}" class="btn btn-primary btn-block btn-sm">View Details</a>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+
+        resultsContainer.innerHTML = html;
+        renderSearchPagination();
+    }
+
+    function renderSearchPagination() {
+        const totalPages = Math.ceil(searchResultsCache.length / resultsPerPage);
+        if (totalPages <= 1) {
+            document.getElementById('search-pagination').innerHTML = '';
+            return;
+        }
+
+        let html = `
+            <button class="btn btn-sm btn-outline-primary mx-1" onclick="changeSearchPage(${currentSearchPage - 1})" ${currentSearchPage === 1 ? 'disabled' : ''}>
+                <i class="fa fa-chevron-left"></i>
+            </button>`;
+
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === currentSearchPage) {
+                html += `<button class="btn btn-sm btn-primary mx-1">${i}</button>`;
+            } else {
+                html += `<button class="btn btn-sm btn-outline-secondary mx-1" onclick="changeSearchPage(${i})">${i}</button>`;
+            }
+        }
+
+        html += `
+            <button class="btn btn-sm btn-outline-primary mx-1" onclick="changeSearchPage(${currentSearchPage + 1})" ${currentSearchPage === totalPages ? 'disabled' : ''}>
+                <i class="fa fa-chevron-right"></i>
+            </button>`;
+
+        document.getElementById('search-pagination').innerHTML = html;
+    }
+
+    function changeSearchPage(page) {
+        const totalPages = Math.ceil(searchResultsCache.length / resultsPerPage);
+        if (page < 1 || page > totalPages) return;
+        currentSearchPage = page;
+        renderSearchPage();
+        document.getElementById('search-results-section').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function clearSearchResults() {
+        document.getElementById('search-results-section').classList.add('d-none');
+        document.getElementById('hero-search-input').value = '';
+        searchResultsCache = [];
+    }
 </script>
+
+<style>
+    .cursor-pointer {
+        cursor: pointer;
+    }
+
+    .badge-pill:hover {
+        transform: scale(1.05);
+        transition: all 0.2s;
+    }
+
+    .bg-opacity-25 {
+        background-color: rgba(255, 255, 255, 0.25) !important;
+    }
+
+    .card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+</style>
 {% endblock %}

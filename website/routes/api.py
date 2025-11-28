@@ -35,8 +35,6 @@ from ..services.services import (
 # Define Blueprint
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
-# Load the NLP model once
-model = SentenceTransformer('all-MiniLM-L6-v2')
 
 # SWITCH FROM SQL TO MONGODB OR VICE VERSA
 @api_bp.route('/switch-db', methods=['POST'])
