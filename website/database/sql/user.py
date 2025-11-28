@@ -1,5 +1,5 @@
 from sqlalchemy import TextClause, text, Row
-from typing import Sequence
+from typing import Sequence, Union
 from ... import db
 from ...dto.user import UserInsertDTO, UserBasicDTO , UserDetailedDTO, UserInstructorInsertDTO, UserStudentInsertDTO, UserUpdateDTO, UserFullDetailsDTO
 
@@ -74,7 +74,7 @@ def toggle_user_status(user_id: int) -> int:
 
     return result.rowcount if result.rowcount > 0 else -1
 
-def get_user_full_details(user_id: int) -> UserFullDetailsDTO:
+def get_user_full_details(user_id: int) -> Union[UserFullDetailsDTO, None]:
     sql_statement = text("""SELECT u.*, s.major, s.enrollment_year, i.department_code, i.title FROM users u
                          LEFT JOIN students s ON u.user_id = s.student_id
                          LEFT JOIN instructors i ON u.user_id = i.instructor_id
