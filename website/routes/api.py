@@ -18,12 +18,10 @@ from ..services.services import (
     get_instructors_by_name_and_dept,
     get_instructor_modules,
     get_students_in_module,
-    
     drop_student_enrollment_module,
     create_module,
     update_module,
     delete_module,
-    get_module_details_by_ids_list,
     get_all_users_detailed,
     toggle_user_status,
     create_user,
@@ -32,11 +30,11 @@ from ..services.services import (
     get_user_full_details,
 )
 
-# Define Blueprint
+# blueprint so we can call /api/
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
 
-# SWITCH FROM SQL TO MONGODB OR VICE VERSA
+# A switch to switch the database between MYSQL and MONGODB
 @api_bp.route('/switch-db', methods=['POST'])
 def switch_database():
     data = request.get_json(silent=True)
@@ -48,7 +46,7 @@ def switch_database():
     return jsonify({"message": f"Database switched to {provider}"})
 
 # =========================================================
-# PUBLIC & STUDENT ROUTES
+# PUBLIC ROUTES
 # =========================================================
 
 @api_bp.route('/modules', methods=['GET'])
@@ -72,9 +70,12 @@ def get_students():
     """Retrieve all student data (for login)."""
     all_students = get_student_data()
     return jsonify(all_students)
+
+# Semantic Search function, it always calls MongoDB due to the embeddings stored in it.
 @api_bp.route('/search', methods=['GET'])
 def search_modules():
-    """Semantic Search for modules."""
+    # This query parameters are optional and are extracted if provided.
+    # example query from frontend: /api/search?term=Y1T2&q=all HTTP/1.1
     original_query = request.args.get('q', '').strip()
     term = request.args.get('term', None)
     level = request.args.get('level', None)
@@ -85,7 +86,7 @@ def search_modules():
         return jsonify({"error": "No query provided"}), 400
 
     try:
-        # Just call the service. The service handles the model loading internally.
+        # Calls the service_mongo.py. The service includes model loading internally.
         results = services_mongo.search_modules_by_query(
             original_query=original_query, 
             term=term, 
@@ -96,20 +97,20 @@ def search_modules():
         return jsonify(results)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+
 # =========================================================
-# ENROLLMENT ROUTES
+# ENROLLMENT ROUTES (Students)
 # =========================================================
 
 @api_bp.route('/enroll', methods=['POST'])
 def enroll_student():
-    # Use get_json() to ensure parsing, silent=True returns None on failure
     data = request.get_json(silent=True)
     
-    # Validate data is a dictionary
     if data is None or not isinstance(data, dict):
         return jsonify({"message": "Invalid JSON format"}), 400
 
-    # Manual key check instead of .get()
     student_id = data['student_id'] if 'student_id' in data else None
     module_id = data['module_id'] if 'module_id' in data else None
 
@@ -117,7 +118,7 @@ def enroll_student():
         return jsonify({"message": "Missing student_id or module_id"}), 400
 
     try:
-        # use module function
+        #Calls service.py
         message = enroll_student_in_module(student_id, module_id)
         return jsonify({"message": message}), 200
     except ValueError as e:
@@ -146,14 +147,16 @@ def drop_enrollment():
         return jsonify({"message": str(e)}), 409
 
 # =========================================================
-# USER INFO ROUTES
+# USER INFO ROUTES (Students)
 # =========================================================
 
+# Returns all users
 @api_bp.route('/users', methods=['GET'])
 def api_get_users():
     user_data = get_user_data()
     return jsonify(user_data)
 
+# Returns a specific student by user_id
 @api_bp.route('/students/<int:user_id>', methods=['GET'])
 def api_get_student_details(user_id):
     student_data = get_student_details_by_user_id(user_id)
@@ -161,11 +164,13 @@ def api_get_student_details(user_id):
         return jsonify(student_data)
     return jsonify({"error": "Student not found"}), 404
 
+# Returns all  instructors.
 @api_bp.route('/instructors', methods=['GET'])
 def get_instructors():
     """Retrieve all instructor data."""
     return jsonify(get_instructor_data())
 
+# Returns a specific instructor by name or name and department.
 @api_bp.route('/search_instructors', methods=['GET'])
 def search_instructors():
     """Search instructors by name with partial matching."""
@@ -183,7 +188,7 @@ def search_instructors():
         print(f"Error searching instructors: {e}")
         return jsonify({"error": str(e)}), 500
 
-
+# Returns a specific instructor by user_id.
 @api_bp.route('/instructors/<int:user_id>', methods=['GET'])
 def api_get_instructor_details(user_id):
     instructor_data = get_instructor_details_by_user_id(user_id)
@@ -191,16 +196,19 @@ def api_get_instructor_details(user_id):
         return jsonify(instructor_data)
     return jsonify({"error": "Instructor not found"}), 404
 
+# Returns all enrollments of a specific student (to check if they have been enrolled in a module).
 @api_bp.route('/student/<int:student_id>/enrollments', methods=['GET'])
 def api_get_student_enrollments(student_id):
     enrollments = get_student_enrollments(student_id)
     return jsonify(enrollments)
 
+# Returns all modules of a specific instructor (to check if they teach this module).
 @api_bp.route('/instructor/<int:instructor_id>/modules', methods=['GET'])
 def api_get_instructor_modules(instructor_id):
     modules = get_instructor_modules(instructor_id)
     return jsonify(modules)
 
+# Returns all students that are enrolled in a specific module ).
 @api_bp.route('/module/<string:module_id>/students', methods=['GET'])
 def api_get_module_students(module_id):
     students = get_students_in_module(module_id)
@@ -210,6 +218,7 @@ def api_get_module_students(module_id):
 # ADMIN ROUTES
 # =========================================================
 
+# Creates a new module.
 @api_bp.route('/admin/modules', methods=['POST'])
 def api_create_module():
     try:
@@ -225,6 +234,7 @@ def api_create_module():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# Updates an existing module.
 @api_bp.route('/admin/modules/<string:module_id>', methods=['PUT'])
 def api_update_module(module_id):
     try:
@@ -239,6 +249,7 @@ def api_update_module(module_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# Deletes an existing module by the module ID.
 @api_bp.route('/admin/modules/<string:module_id>', methods=['DELETE'])
 def api_delete_module(module_id):
     try:
@@ -247,11 +258,14 @@ def api_delete_module(module_id):
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
 
+# --- ADMIN USER CRUD ROUTES ---
+# Get all users.
 @api_bp.route('/admin/users', methods=['GET'])
 def api_get_all_users_detailed():
     users = get_all_users_detailed()
     return jsonify(users)
 
+# Activate/deactivate a user.
 @api_bp.route('/admin/users/<int:user_id>/toggle', methods=['POST'])
 def api_toggle_user(user_id):
     try:
@@ -259,12 +273,8 @@ def api_toggle_user(user_id):
         return jsonify({"message": msg}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
-# In website/routes/api.py
 
-
-# --- ADMIN USER CRUD ROUTES ---
-
+# Create a new user.
 @api_bp.route('/admin/users', methods=['POST'])
 def api_create_user():
     print(request.data)
@@ -280,6 +290,7 @@ def api_create_user():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# Get a user by user ID.
 @api_bp.route('/admin/users/<int:user_id>', methods=['GET'])
 def api_get_single_user(user_id):
     """Used to populate the Edit Modal"""
@@ -288,6 +299,7 @@ def api_get_single_user(user_id):
         return jsonify(user)
     return jsonify({"error": "User not found"}), 404
 
+# Update a user by user ID.
 @api_bp.route('/admin/users/<int:user_id>', methods=['PUT'])
 def api_update_user(user_id):
     try:
@@ -297,6 +309,7 @@ def api_update_user(user_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# Delete a user by user ID.
 @api_bp.route('/admin/users/<int:user_id>', methods=['DELETE'])
 def api_delete_user(user_id):
     try:
