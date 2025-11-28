@@ -1,92 +1,112 @@
-# University Course Management System (INF2003)
+# Edukate - Smart University Module Management System
 
-This is a Flask web application for the INF2003 Database Systems project. It uses a hybrid database system to manage university courses and provide a powerful, natural-language semantic search for students.
+Edukate is a modern, full-stack web application designed to revolutionize how university students discover and enroll in modules. It features a **Hybrid Database Architecture** (SQL & NoSQL), **Semantic Search** powered by AI, and a responsive, role-based user interface.
 
-## 🚀 Features
+![UCMS](website/static/img/github.png)
+## 🚀 Key Features
 
-  * **Hybrid Database System:** Uses MySQL for all structured, relational data (users, courses, enrollments) and MongoDB Atlas for a non-relational vector search index.
-  * **True Semantic Search:** Search for courses using natural language (e.g., "programming courses by alan turing").
-  * **Smart Filtering:** Combines semantic search with structured filters for academic term, course level, and instructor.
-  * **Student Dashboard:** A personalized dashboard for students to view their academic history (from SQL) and search the global course catalog (from NoSQL).
-  * **Realistic Data:** The SQL database is populated using real module data from 7 different SIT curriculum PDFs.
+### 🔍 Semantic Search
+- **Natural Language Processing**: Search for "courses about web design" and get results for "Web Application Development" even if the keywords don't match exactly.
+- **Smart Filtering**: Automatically detects academic terms (e.g., "Year 1 Trimester 2") from your search query.
+- **Hybrid Search**: Combines vector similarity search with traditional keyword matching.
 
-## 🏗️ System Architecture
+### 🔀 Hybrid Database Architecture with one-one mapping
+- **Dual-Backend Support**: Switch between **MySQL** and **MongoDB** in real-time using the toggle in the navigation bar.
+- **Service Facade Pattern**: Clean architecture abstracting database logic from the API layer.
+- **Advanced Aggregation**: Utilizes MongoDB aggregation pipelines for high-performance data retrieval.
 
-  * **Backend:** Flask
-  * **Relational Database (SQL):** MySQL
-  * **Non-Relational Database (NoSQL):** MongoDB Atlas (for Vector Search)
-  * **Semantic Model:** `sentence-transformers`
+### 👥 Role-Based Dashboards
+- **Students**: View enrolled modules, check GPA/credits, and discover personalized recommendations.
+- **Instructors**: Manage taught modules and view student enrollments.
+- **Admins**: Full CRUD capabilities for Users and Modules.
 
-## 🏁 Getting Started
+---
 
-Follow these steps to set up and run the project on your local machine.
+## 🛠️ Technology Stack
 
-### 1\. Prerequisites
+- **Backend**: Python 3.10+, Flask, SQLAlchemy, PyMongo
+- **Database**: 
+  - **MySQL** (Relational Data)
+  - **MongoDB Atlas** (Vector Search & Document Store)
+- **AI/ML**: `sentence-transformers` (Hugging Face)
+- **Frontend**: HTML5, TailwindCSS, Bootstrap 4, Vanilla JavaScript
 
-Before you begin, you will need:
+---
 
-  * Python 3.10+
-  * A local MySQL server (e.g., XAMPP, MySQL Community Server)
-  * A free MongoDB Atlas account
+## 📦 Installation & Setup
 
-### 2\. Installation & Setup
+### Prerequisites
+- Python 3.8 or higher
+- MySQL Server
+- MongoDB Atlas Cluster (for Vector Search)
 
-**A. Clone the Repository & Set Up Environment**
-
+### 1. Clone the Repository
 ```bash
-# 1. Clone the repo
-git clone <your-repo-url>
-cd INF2003-Assignment
+git clone https://github.com/yourusername/edukate.git
+cd edukate
+```
 
-# 2. Create a virtual environment
-python -m venv venv
-
-# 3. Activate the environment
-# Windows
-venv\Scripts\activate
-# macOS/Linux
-source venv/bin/activate
-
-# 4. Install all required packages
+### 2. Install Dependencies
+```bash
 pip install -r requirements.txt
 ```
 
-**B. Configure the SQL Database (MySQL)**
+### 3. Configure Environment
+If you wish to use the original cloud service, you do not need to change anything.
+If you wish to use your own database, create a `.env` file or update `config.py` with your database credentials:
+```python
+# config.py
+SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://user:password@localhost/inf2003_db'
+MONGO_URI = 'mongodb+srv://<user>:<password>@cluster.mongodb.net/inf2003_db'
+```
 
-1.  Open your MySQL tool (like MySQL Workbench).
-2.  Create a new database. We recommend using `inf2003-db`.
-    ```sql
-    CREATE DATABASE inf2003-db;
-    ```
-3.  Open the `config.py` file in the project root.
-4.  Update the `SQLALCHEMY_DATABASE_URI` with your MySQL username, password, and database name.
-    ```python
-    # in config.py
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:YOUR_PASSWORD@localhost/inf2003-db'
-    ```
+### 4. Initialize Databases
+Do not need to run this if using cloud server
+(Only if using local servers) Run the initialization script to populate MongoDB and generate embeddings for MongoDB:
+```bash
+python generate_vectors.py
+```
 
-**C. Configure the NoSQL Database (MongoDB Atlas)**
+### 5. Run the Application
+```bash
+python run.py
+```
+Visit `http://127.0.0.1:5000/` in your browser.
 
-1. MongoDB is setup already, do not change URL
+---
 
-### 3\. Populate Your Databases (Required One-Time Step)
+## 📂 Project Structure
 
-This is the most important step. You must populate your databases in this order.
+```
+INF2003-Assignment/
+├── website/
+│   ├── routes/             # API and View blueprints
+│   │   ├── api.py          # REST API endpoints
+│   │   └── views.py        # Frontend route rendering
+│   ├── services/           # Business Logic & DB Abstraction
+│   │   ├── services.py     # Facade (Switch logic)
+│   │   ├── services_sql.py # MySQL Implementation
+│   │   └── services_mongo.py # MongoDB Implementation
+│   ├── templates/          # HTML Templates (Jinja2)
+│   ├── static/             # CSS, JS, Images
+│   └── models/             # SQLAlchemy Models
+├── generate_vectors.py     # ETL Script (SQL -> Mongo + Embeddings)
+├── main.py                 # Application Entry Point
+├── config.py               # Configuration Settings
+└── technical_overview.md   # Detailed Technical Report
+```
 
-**A. Populate SQL**
+## 📝 Usage Guide
 
-1.  Open your MySQL tool (Workbench) and connect to your `inf2003-db`.
-2.  Open and run the **"Final, Complete SQL Reset Script"** I provided in our chat. This script will:
-      * Create all tables (`users`, `courses`, `enrollments`, etc.).
-      * Populate them with all the PDF-accurate course data.
-      * Create your "Alex Cross" student profile and academic history.
+1.  **Login**:
+    *   **Student**: alex.student@ucms.edu:password
+    *   **Instructor**: instructor1@ucms.edu:password
+    *   **Admin**: admin@ucms.edu:password
+2.  **Switching Databases**: Click the toggle switch in the top-right corner of the navigation bar to switch between SQL and MongoDB backends instantly.
+3.  **Search**: If you're a student,try typing "Year 1 Trimester 2" in the search bar on the home page.
+  Or try searching for "Web Application Development".
 
-### 5\. Run the Application
+---
 
-You are all set\!
-
-1.  In your terminal (with `venv` active), run the main application:
-    ```bash
-    python run.py
-    ```
-2.  Open your web browser and go to `http://127.0.0.1:5000`
+## 📄 License
+This project is for educational purposes as part of the INF2003 Database Systems assignment.

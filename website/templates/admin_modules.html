@@ -4,16 +4,16 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    
+
     <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
         <div>
             <h2 class="text-3xl font-bold text-gray-900">Module Catalog</h2>
             <p class="text-sm text-gray-500 mt-1">Manage all academic modules and enrollments.</p>
         </div>
-        
+
         <div class="flex flex-col sm:flex-row items-center gap-3">
             <div class="relative w-full sm:w-auto">
-                <input type="text" id="searchInput" onkeyup="handleFilterAndSort()" placeholder="Search modules..." 
+                <input type="text" id="searchInput" onkeyup="handleFilterAndSort()" placeholder="Search modules..."
                     class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm text-sm w-full sm:w-64">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i class="fas fa-search text-gray-400"></i>
@@ -21,7 +21,7 @@
             </div>
 
             <div class="relative w-full sm:w-auto">
-                <select id="sortSelect" onchange="handleFilterAndSort()" 
+                <select id="sortSelect" onchange="handleFilterAndSort()"
                     class="pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm text-sm w-full cursor-pointer bg-white">
                     <option value="newest">Newest Created</option>
                     <option value="oldest">Oldest Created</option>
@@ -31,7 +31,7 @@
                 </select>
             </div>
 
-                <button onclick="openModal()" 
+            <button onclick="openModal()"
                 class="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2 px-6 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-150 flex items-center justify-center">
                 <i class="fas fa-plus mr-2"></i> Add Module
             </button>
@@ -40,14 +40,15 @@
 
     <div class="flex items-center justify-between bg-white p-4 rounded-t-lg border border-b-0 border-gray-200">
         <p class="text-sm text-gray-700">
-            Page <span class="font-bold text-gray-900" id="curr-page-num">1</span> of <span class="font-bold text-gray-900" id="total-pages">1</span>
+            Page <span class="font-bold text-gray-900" id="curr-page-num">1</span> of <span
+                class="font-bold text-gray-900" id="total-pages">1</span>
         </p>
         <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-            <button type="button" id="btn-prev" onclick="changePage(-1)" 
+            <button type="button" id="btn-prev" onclick="changePage(-1)"
                 class="relative inline-flex items-center px-3 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition">
                 <i class="fas fa-chevron-left mr-1"></i> Prev
             </button>
-            <button type="button" id="btn-next" onclick="changePage(1)" 
+            <button type="button" id="btn-next" onclick="changePage(1)"
                 class="relative inline-flex items-center px-3 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition">
                 Next <i class="fas fa-chevron-right ml-1"></i>
             </button>
@@ -60,19 +61,25 @@
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Instructor</th>
-                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Capacity</th>
-                    <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Instructor
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Capacity
+                    </th>
+                    <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions
+                    </th>
                 </tr>
             </thead>
             <tbody id="module-table-body" class="bg-white divide-y divide-gray-200">
-                <tr><td colspan="5" class="text-center py-8 text-gray-500">Loading modules...</td></tr>
+                <tr>
+                    <td colspan="5" class="text-center py-8 text-gray-500">Loading modules...</td>
+                </tr>
             </tbody>
         </table>
     </div>
 </div>
 
-    <div id="moduleModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm hidden z-50 flex justify-center items-center transition-opacity">
+<div id="moduleModal"
+    class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm hidden z-50 flex justify-center items-center transition-opacity">
     <div class="bg-white rounded-xl w-full max-w-lg p-8 shadow-2xl transform transition-all">
         <div class="flex justify-between items-center mb-6">
             <h3 id="modalTitle" class="text-2xl font-bold text-gray-800">Add Module</h3>
@@ -80,48 +87,72 @@
                 <i class="fas fa-times text-xl"></i>
             </button>
         </div>
-        
+
         <form id="moduleForm">
             <div class="grid grid-cols-2 gap-5 mb-5">
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Module ID</label>
-                    <input type="text" id="inp_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="e.g. CS101" required>
+                    <input type="text" id="inp_id"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                        placeholder="e.g. CS101" required>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Credits</label>
-                    <input type="number" id="inp_credits" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" value="6">
+                    <input type="number" id="inp_credits"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                        value="6">
                 </div>
             </div>
-            
+
             <div class="mb-5">
                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Module Name</label>
-                <input type="text" id="inp_name" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="e.g. Intro to Computer Science" required>
+                <input type="text" id="inp_name"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    placeholder="e.g. Intro to Computer Science" required>
             </div>
-            
+
             <div class="mb-5">
                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Description</label>
-                <textarea id="inp_desc" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="Module description..."></textarea>
+                <textarea id="inp_desc" rows="3"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    placeholder="Module description..."></textarea>
             </div>
-            
+
             <div class="grid grid-cols-2 gap-5 mb-8">
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Term</label>
-                    <select id="inp_term" class="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
-                        <option value="Fall 2025">Fall 2025</option>
-                        <option value="Spring 2026">Spring 2026</option>
+                    <select id="inp_term"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                        <option value="Y1T1">Y1T1 </option>
+                        <option value="Y1T2">Y1T2</option>
+                        <option value="Y1T3">Y1T3</option>
+                        <option value="Y2T1">Y2T1</option>
+                        <option value="Y2T2">Y2T2</option>
+                        <option value="Y2T3">Y2T3</option>
+                        <option value="Y3T1">Y3T1</option>
+                        <option value="Y3T2">Y3T2</option>
+                        <option value="Y3T3">Y3T3</option>
+                        <option value="Y4T1">Y4T1</option>
+                        <option value="Y4T2">Y4T2</option>
+                        <option value="Y4T3">Y4T3</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Capacity</label>
-                    <input type="number" id="inp_cap" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" value="30">
+                    <input type="number" id="inp_cap"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                        value="30">
                 </div>
             </div>
-            
-            <input type="hidden" id="inp_inst" value="1"> 
+
+            <input type="hidden" id="inp_inst" value="1">
 
             <div class="flex justify-end space-x-3 border-t pt-6">
-                <button type="button" onclick="closeModal()" class="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition">Cancel</button>
-                <button type="submit" class="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md hover:shadow-lg font-medium transition">Save Module</button>
+                <button type="button" onclick="closeModal()"
+                    class="px-5 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition">Cancel</button>
+                <button type="submit"
+                    class="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md hover:shadow-lg font-medium transition">Save
+                    Module</button>
             </div>
         </form>
     </div>
@@ -129,8 +160,8 @@
 
 <script>
     // --- State ---
-    let allModules = [];      
-    let displayedModules = []; 
+    let allModules = [];
+    let displayedModules = [];
     let currentPage = 1;
     const itemsPerPage = 10;
     let isEditMode = false;
@@ -143,7 +174,7 @@
             allModules = data;
             handleFilterAndSort(); // Initial Sort/Filter
         } catch (e) {
-            document.getElementById('module-table-body').innerHTML = 
+            document.getElementById('module-table-body').innerHTML =
                 `<tr><td colspan="5" class="text-center py-8 text-red-500 font-medium">Error loading modules. Please try again.</td></tr>`;
         }
     }
@@ -151,17 +182,17 @@
     function handleFilterAndSort() {
         const searchQuery = document.getElementById('searchInput').value.toLowerCase();
         const sortValue = document.getElementById('sortSelect').value;
-        
+
         // 1. Filter
-        let tempModules = allModules.filter(c => 
-            c.module_name.toLowerCase().includes(searchQuery) || 
+        let tempModules = allModules.filter(c =>
+            c.module_name.toLowerCase().includes(searchQuery) ||
             c.module_id.toLowerCase().includes(searchQuery) ||
             (c.instructor_name && c.instructor_name.toLowerCase().includes(searchQuery))
         );
 
         // 2. Sort
         tempModules.sort((a, b) => {
-            switch(sortValue) {
+            switch (sortValue) {
                 case 'newest':
                     // Fallback to ID comparison if created_at is missing
                     console.log(a.created_at, b.created_at);
@@ -180,7 +211,7 @@
                     return 0;
             }
         });
-        
+
         displayedModules = tempModules;
         currentPage = 1; // Reset to page 1 on new filter/sort
         renderTable();
@@ -188,7 +219,7 @@
 
     function renderTable() {
         const tbody = document.getElementById('module-table-body');
-        
+
         // Calculate slice based on displayedModules
         const totalItems = displayedModules.length;
         const startIndex = (currentPage - 1) * itemsPerPage;
@@ -208,7 +239,7 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <div class="flex items-center">
                             <div class="w-16 bg-gray-200 rounded-full h-2.5 mr-2">
-                                <div class="bg-green-500 h-2.5 rounded-full" style="width: ${Math.min((c.current_enrollment/c.max_capacity)*100, 100)}%"></div>
+                                <div class="bg-green-500 h-2.5 rounded-full" style="width: ${Math.min((c.current_enrollment / c.max_capacity) * 100, 100)}%"></div>
                             </div>
                             ${c.current_enrollment || 0}/${c.max_capacity}
                         </div>
@@ -267,14 +298,14 @@
             const module = await apiFetch(`/api/modules/${id}`);
             isEditMode = true;
             document.getElementById('modalTitle').innerText = "Edit Module";
-            
+
             document.getElementById('inp_id').value = module.module_id;
             document.getElementById('inp_id').disabled = true;
             document.getElementById('inp_name').value = module.module_name;
             document.getElementById('inp_desc').value = module.description;
             document.getElementById('inp_credits').value = module.credits;
             document.getElementById('inp_term').value = module.academic_term;
-            
+
             modal.classList.remove('hidden');
         } catch (e) {
             alert('Could not fetch module details.');
@@ -302,18 +333,20 @@
                 body: payload // apiFetch handles JSON.stringify
             });
             closeModal();
-            loadModules(); 
+            loadModules();
+            alert('Module saved successfully.');
         } catch (err) {
             alert(err.message);
         }
     });
 
     async function deleteModule(id) {
-        if(!confirm(`Delete module ${id}? This action cannot be undone.`)) return;
-        
+        if (!confirm(`Delete module ${id}? This action cannot be undone.`)) return;
+
         try {
             await apiFetch(`/api/admin/modules/${id}`, { method: 'DELETE' });
             loadModules();
+            alert('Module deleted successfully.');
         } catch (err) {
             alert(err.message);
         }
