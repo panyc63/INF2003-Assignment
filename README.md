@@ -42,7 +42,7 @@ Edukate is a modern, full-stack web application designed to revolutionize how un
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/edukate.git
+git clone https://github.com/panyc63/INF2003-Assignment.git
 cd edukate
 ```
 
