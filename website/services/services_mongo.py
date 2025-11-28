@@ -242,7 +242,6 @@ def create_module(data):
 
     mongo.db.modules.insert_one({
         "module_id": data['module_id'],
-        "module_code": data.get('module_code'), 
         "module_name": data['module_name'],
         "description": data.get('description'),
         "credits": data.get('credits'),
@@ -433,11 +432,31 @@ def get_student_data():
 
 # get all instructors
 def get_instructor_data():
-    instructors = list(mongo.db.users.find({"role": "instructor"}))
+    pipeline = [
+        {"$match": {"role": "instructor"}},
+        {"$lookup": {
+            "from": "instructors",
+            "localField": "user_id",
+            "foreignField": "instructor_id",
+            "as": "instructor_details"
+        }},
+        {"$unwind": {
+            "path": "$instructor_details",
+            "preserveNullAndEmptyArrays": True
+        }},
+        {"$project": {
+            "user_id": 1,
+            "first_name": 1,
+            "last_name": 1,
+            "department_code": "$instructor_details.department_code",
+            "title": "$instructor_details.title"
+        }}
+    ]
+    instructors = list(mongo.db.users.aggregate(pipeline))
     return [{
         "id": i.get('user_id'), 
         "name": f"{i.get('first_name')} {i.get('last_name')}", 
-        "department_code": i.get('dept'), 
+        "department_code": i.get('department_code'), 
         "title": i.get('title')
     } for i in instructors]
 
@@ -503,26 +522,50 @@ def get_instructors_by_name(query: str):
     if not query:
         return []
 
-    regex = {"$regex": query, "$options": "i"}
+    pipeline = [
+        {
+            "$match": {
+                "role": "instructor",
+                "$or": [
+                    {"first_name": {"$regex": query, "$options": "i"}},
+                    {"last_name": {"$regex": query, "$options": "i"}},
+                    {"$expr": {"$regexMatch": {
+                        "input": {"$concat": ["$first_name", " ", "$last_name"]},
+                        "regex": query,
+                        "options": "i"
+                    }}}
+                ]
+            }
+        },
+        {
+            "$lookup": {
+                "from": "instructors",
+                "localField": "user_id",
+                "foreignField": "instructor_id",
+                "as": "instructor_details"
+            }
+        },
+        {
+            "$unwind": "$instructor_details"
+        },
+        {
+            "$project": {
+                "user_id": 1,
+                "first_name": 1,
+                "last_name": 1,
+                "department_code": "$instructor_details.department_code",
+                "title": "$instructor_details.title"
+            }
+        }
+    ]
 
-    instructors = list(mongo.db.users.find({
-        "role": "instructor",
-        "$or": [
-            {"first_name": regex},
-            {"last_name": regex},
-            {"$expr": {"$regexMatch": {
-                "input": {"$concat": ["$first_name", " ", "$last_name"]},
-                "regex": query,
-                "options": "i"
-            }}}
-        ]
-    }))
+    instructors = list(mongo.db.users.aggregate(pipeline))
 
     return [
         {
             "id": i.get("user_id"),
             "name": f"{i.get('first_name')} {i.get('last_name')}",
-            "department_code": i.get("dept"),
+            "department_code": i.get("department_code"),
             "title": i.get("title")
         } 
         for i in instructors
@@ -534,29 +577,56 @@ def get_instructors_by_name_and_dept(query: str):
         return []
 
     dept_code, name_part = map(str.strip, query.split(':', 1))
-    regex = {"$regex": name_part, "$options": "i"}
+    
+    pipeline = [
+        {
+            "$match": {
+                "role": "instructor",
+                "$or": [
+                    {"first_name": {"$regex": name_part, "$options": "i"}},
+                    {"last_name": {"$regex": name_part, "$options": "i"}},
+                    {"$expr": {"$regexMatch": {
+                        "input": {"$concat": ["$first_name", " ", "$last_name"]},
+                        "regex": name_part,
+                        "options": "i"
+                    }}}
+                ]
+            }
+        },
+        {
+            "$lookup": {
+                "from": "instructors",
+                "localField": "user_id",
+                "foreignField": "instructor_id",
+                "as": "instructor_details"
+            }
+        },
+        {
+            "$unwind": "$instructor_details"
+        },
+        {
+            "$match": {
+                "instructor_details.department_code": {"$regex": f"^{dept_code}$", "$options": "i"}
+            }
+        },
+        {
+            "$project": {
+                "user_id": 1,
+                "first_name": 1,
+                "last_name": 1,
+                "department_code": "$instructor_details.department_code",
+                "title": "$instructor_details.title"
+            }
+        }
+    ]
 
-    mongo_query = {
-        "role": "instructor",
-        "dept": dept_code,  
-        "$or": [
-            {"first_name": regex},
-            {"last_name": regex},
-            {"$expr": {"$regexMatch": {
-                "input": {"$concat": ["$first_name", " ", "$last_name"]},
-                "regex": name_part,
-                "options": "i"
-            }}}
-        ]
-    }
-
-    instructors = list(mongo.db.users.find(mongo_query))
+    instructors = list(mongo.db.users.aggregate(pipeline))
 
     return [
         {
             "id": i.get("user_id"),
             "name": f"{i.get('first_name')} {i.get('last_name')}",
-            "department_code": i.get("dept"),
+            "department_code": i.get("department_code"),
             "title": i.get("title")
         } 
         for i in instructors

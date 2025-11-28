@@ -148,16 +148,15 @@ def create_module(data):
             raise ValueError("ID Required")
         
         sql = text("""
-            INSERT INTO modules (module_id, module_code, module_name, description, credits, academic_term, max_capacity, instructor_id)
-            VALUES (:id, :code, :name, :desc, :credits, :term, :cap, :inst_id)
+            INSERT INTO modules (module_id, module_name, description, credits, academic_term, max_capacity, instructor_id)
+            VALUES (:id, :name, :desc, :credits, :term, :cap, :inst_id)
         """)
         db.session.execute(sql, {
             "id": data['module_id'],
-            "code": data['module_code'] if 'module_code' in data else data['module_id'],
             "name": data['module_name'],
             "desc": data.get('description', ''),
             "credits": data.get('credits', 6),
-            "term": data.get('academic_term', 'Fall 2025'),
+            "term": data.get('academic_term', 'Y1T1'),
             "cap": data.get('max_capacity', 30),
             "inst_id": data.get('instructor_id')
         })
@@ -233,9 +232,9 @@ def create_user(data):
         
         db.session.commit()
         return "User created (SQL)."
-    except Exception as e:
+    except Exception as e:   
         db.session.rollback()
-        raise e
+        raise ValueError('Duplicate entry')
 
 # update user information
 def update_user(user_id, data):

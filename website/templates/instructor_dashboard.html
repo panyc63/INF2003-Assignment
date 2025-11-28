@@ -17,10 +17,10 @@
     </div>
 
     <div id="pagination-controls" class="mt-3 mb-3 flex justify-center items-center space-x-2 hidden">
-        </div>
+    </div>
 
     <div class="card">
-        <h3 class="text-2xl font-semibold mb-4 border-b pb-2 ms-4 mt-3 me-4">Your Modules (Fall 2025)</h3>
+        <h3 class="text-2xl font-semibold mb-4 border-b pb-2">Your Modules</h3>
 
         <div id="course-list-container" class="divide-y divide-gray-200 space-y-4 min-h-[200px]">
             <p class="text-center text-gray-500 p-6">Loading your teaching schedule...</p>
@@ -53,7 +53,7 @@
             document.getElementById('instructor-info').textContent = "Error: User ID not found.";
             return;
         }
-        
+
         // Note: Your API route is plural 'instructors', singular ID
         const data = await apiFetch(`/api/instructors/${currentState.userId}`);
 
@@ -130,18 +130,18 @@
 
             return `
                 <div class="course-item card bg-blue-50 border border-blue-200" id="module-${mid}">
-                    <h4 class="text-xl font-bold text-blue-800 mb-2 ms-4 mt-3 me-4">
+                    <h4 class="text-xl font-bold text-blue-800 mb-2">
                         ${mid} - ${mname} 
                         <span class="text-sm font-normal text-gray-600">(${mcred} Credits)</span>
                     </h4>
-                    <p class="text-sm mb-3 ms-4 me-4">${mdesc}</p>
+                    <p class="text-sm mb-3">${mdesc}</p>
                     <div class="flex justify-between items-center text-sm mb-3">
-                        <span class="font-medium text-gray-700 ms-4">Enrollment: ${mcurr} / ${mmax}</span>
-                        <button class="btn-secondary text-sm px-3 py-1 me-4 ms-4" onclick="showEnrollments('${mid}', '${mname.replace(/'/g, "\\'")}')">
+                        <span class="font-medium text-gray-700">Enrollment: ${mcurr} / ${mmax}</span>
+                        <button class="btn-secondary text-sm px-3 py-1" onclick="showEnrollments('${mid}', '${mname.replace(/'/g, "\\'")}')">
                             View Students (${mcurr})
                         </button>
                     </div>
-                    <div id="enrollment-details-${mid}" class="hidden p-3 bg-white border rounded-lg">
+                    <div id="enrollment-details-${mid}" class="hidden mt-3 p-3 bg-white border rounded-lg">
                         <p>Loading student list...</p>
                     </div>
                 </div>
@@ -181,7 +181,7 @@
                 ${page}
             </button>
         `;
-        
+
         const generateEllipsis = () => `<span class="px-2 text-gray-400">...</span>`;
 
         if (totalPages <= 7) {
@@ -189,15 +189,15 @@
         } else {
             paginationHTML += generatePageButton(1);
             if (currentPage > 3) paginationHTML += generateEllipsis();
-            
+
             let start = Math.max(2, currentPage - 1);
             let end = Math.min(totalPages - 1, currentPage + 1);
-            
+
             if (currentPage <= 3) end = 4;
             if (currentPage >= totalPages - 2) start = totalPages - 3;
 
             for (let i = start; i <= end; i++) paginationHTML += generatePageButton(i);
-            
+
             if (currentPage < totalPages - 2) paginationHTML += generateEllipsis();
             paginationHTML += generatePageButton(totalPages);
         }
@@ -238,7 +238,7 @@
             detailsDiv.innerHTML = '<p class="text-center text-gray-500">Fetching student data...</p>';
 
             const students = await apiFetch(`/api/module/${moduleId}/students`);
-            
+
             if (!students || students.length === 0) {
                 detailsDiv.innerHTML = `<p class="text-center text-gray-500">No students currently enrolled in ${moduleTitle}.</p>`;
                 return;

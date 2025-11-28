@@ -4,26 +4,28 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    
+
     <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900">System Administration</h1>
-        <p class="text-gray-600 mt-2">Manage university resources, users, and course catalog.</p>
+        <p class="text-gray-600 mt-2">Manage university resources, users, and module catalog.</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition cursor-pointer" onclick="window.location.href='/admin/courses'">
+
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition cursor-pointer"
+            onclick="window.location.href='/admin/modules'">
             <div class="flex items-center justify-between mb-4">
                 <div class="bg-blue-100 p-3 rounded-lg">
                     <i class="fas fa-book text-blue-600 text-xl"></i>
                 </div>
                 <span class="text-sm text-gray-500">Catalog</span>
             </div>
-            <h3 class="text-xl font-bold text-gray-900">Manage Courses</h3>
-            <p class="text-gray-500 text-sm mt-1">Create, edit, or delete courses.</p>
+            <h3 class="text-xl font-bold text-gray-900">Manage Modules</h3>
+            <p class="text-gray-500 text-sm mt-1">Create, edit, or delete modules.</p>
         </div>
 
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition cursor-pointer" onclick="window.location.href='/admin/users'">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition cursor-pointer"
+            onclick="window.location.href='/admin/users'">
             <div class="flex items-center justify-between mb-4">
                 <div class="bg-green-100 p-3 rounded-lg">
                     <i class="fas fa-users text-green-600 text-xl"></i>
