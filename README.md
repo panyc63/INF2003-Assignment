@@ -1,6 +1,6 @@
-# Edukate - Smart University Module Management System
+# UCMS - Smart University Module Management System
 
-Edukate is a modern, full-stack web application designed to revolutionize how university students discover and enroll in modules. It features a **Hybrid Database Architecture** (SQL & NoSQL), **Semantic Search** powered by AI, and a responsive, role-based user interface.
+UCMS-University Course Management System is a modern, full-stack web application designed to revolutionize how university students discover and enroll in modules. It features a **Hybrid Database Architecture** (SQL & NoSQL), **Semantic Search** powered by AI, and a responsive, role-based user interface.
 
 ![UCMS](website/static/img/github.png)
 ## 🚀 Key Features
@@ -42,8 +42,8 @@ Edukate is a modern, full-stack web application designed to revolutionize how un
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/edukate.git
-cd edukate
+git clone https://github.com/yourusername/UCMS.git
+cd UCMS
 ```
 
 ### 2. Install Dependencies
