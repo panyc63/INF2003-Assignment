@@ -1,4 +1,4 @@
-# UCMS - Smart University Module Management System
+# UCMS - University Course Management System
 
 UCMS-University Course Management System is a modern, full-stack web application designed to revolutionize how university students discover and enroll in modules. It features a **Hybrid Database Architecture** (SQL & NoSQL), **Semantic Search** powered by AI, and a responsive, role-based user interface.
 
@@ -66,6 +66,7 @@ Do not need to run this if using cloud server
 ```bash
 python generate_vectors.py
 ```
+Populate MySQL with the providede script.
 
 ### 5. Run the Application
 ```bash
