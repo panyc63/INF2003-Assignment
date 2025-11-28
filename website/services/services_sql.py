@@ -7,6 +7,7 @@ from typing import Dict, Any, List
 #  SQL READ OPERATIONS
 # =====================================================
 
+# search modules via text lookup
 def search_modules_text(query: str, filters: Dict) -> List[Dict[str, Any]]:
     """
     SQL Fallback Search.
@@ -23,7 +24,7 @@ def search_modules_text(query: str, filters: Dict) -> List[Dict[str, Any]]:
     """
     params = {"q": f"%{query}%"}
 
-    # Add SQL Filters
+    # add sql filters
     if filters.get('term'):
         base_sql += " AND c.academic_term = :term"
         params['term'] = filters['term']
@@ -43,10 +44,11 @@ def search_modules_text(query: str, filters: Dict) -> List[Dict[str, Any]]:
             "max_capacity": row.max_capacity,
             "current_enrollment": row.current_enrollment,
             "instructor_name": instructor_name,
-            "score": 1.0 # Placeholder score for SQL results
+            "score": 1.0  # placeholder score for sql results
         })
     return results
 
+# fetch all modules & instructors
 def get_module_data():
     sql = text("""
         SELECT 
@@ -83,7 +85,7 @@ def get_module_data():
         })
     return results
 
-
+# get detailed module view
 def get_module_details_by_id(module_id, student_id=None):
     sql = text("""
         SELECT 
@@ -100,13 +102,15 @@ def get_module_details_by_id(module_id, student_id=None):
     """)
     module = db.session.execute(sql, {"cid": module_id}).first()
     
-    if not module: return None
+    if not module:
+        return None
 
     enrollment_status = None
     if student_id:
         enroll_sql = text("SELECT status FROM enrollments WHERE student_id = :sid AND module_id = :cid")
         enroll_record = db.session.execute(enroll_sql, {"sid": student_id, "cid": module_id}).first()
-        if enroll_record: enrollment_status = enroll_record.status
+        if enroll_record:
+            enrollment_status = enroll_record.status
 
     instructor_name = f"{module.instructor_first} {module.instructor_last}" if module.instructor_first else "TBA"
     curr = module.current_enrollment or 0
@@ -126,18 +130,22 @@ def get_module_details_by_id(module_id, student_id=None):
         "student_status": enrollment_status
     }
 
+# batch fetch module details
 def get_module_details_by_ids_list(module_ids):
-    if not module_ids: return []
-    # For simplicity, calling singular function in loop (SQL optimization possible here but kept simple)
+    if not module_ids:
+        return []
+    # for simplicity, calling singular function in loop (sql optimization possible here but kept simple)
     return [get_module_details_by_id(cid) for cid in module_ids if cid]
 
 # =====================================================
 #  SQL WRITE OPERATIONS (COURSES)
 # =====================================================
 
+# register new module
 def create_module(data):
     try:
-        if 'module_id' not in data or not data['module_id']: raise ValueError("ID Required")
+        if 'module_id' not in data or not data['module_id']:
+            raise ValueError("ID Required")
         
         sql = text("""
             INSERT INTO modules (module_id, module_code, module_name, description, credits, academic_term, max_capacity, instructor_id)
@@ -159,6 +167,7 @@ def create_module(data):
         db.session.rollback()
         raise ValueError("Module ID exists.")
 
+# modify module details
 def update_module(module_id, data):
     sql = text("""
         UPDATE modules SET module_name=:name, description=:desc, credits=:credits, 
@@ -175,6 +184,7 @@ def update_module(module_id, data):
     db.session.commit()
     return f"Module {module_id} updated (SQL)."
 
+# remove module record
 def delete_module(module_id):
     db.session.execute(text("DELETE FROM modules WHERE module_id = :id"), {"id": module_id})
     db.session.commit()
@@ -184,6 +194,7 @@ def delete_module(module_id):
 #  SQL USER MANAGEMENT
 # =====================================================
 
+# get all users with roles
 def get_all_users_detailed():
     sql = text("""
         SELECT u.user_id, u.university_id, u.first_name, u.last_name, u.email, u.role, u.is_active,
@@ -201,6 +212,7 @@ def get_all_users_detailed():
         "details": u.major if u.role == 'student' else (u.department_code if u.role == 'instructor' else 'Admin')
     } for u in users]
 
+# create new user profile
 def create_user(data):
     try:
         sql_user = text("INSERT INTO users (university_id, email, password_hash, first_name, last_name, role, is_active) VALUES (:uid, :email, 'pass', :fname, :lname, :role, 1)")
@@ -208,7 +220,7 @@ def create_user(data):
             "uid": data['university_id'], "email": data['email'], "fname": data['first_name'],
             "lname": data['last_name'], "role": data['role']
         })
-        # Get ID
+        # get id
         uid_res = db.session.execute(text("SELECT user_id FROM users WHERE university_id=:uid"), {"uid": data['university_id']}).first()
         new_id = uid_res.user_id
 
@@ -225,6 +237,7 @@ def create_user(data):
         db.session.rollback()
         raise e
 
+# update user information
 def update_user(user_id, data):
     sql = text("UPDATE users SET first_name=:fname, last_name=:lname, email=:email WHERE user_id=:id")
     db.session.execute(sql, {"fname":data['first_name'], "lname":data['last_name'], "email":data['email'], "id":user_id})
@@ -239,11 +252,13 @@ def update_user(user_id, data):
     db.session.commit()
     return "User updated (SQL)."
 
+# delete user account
 def delete_user(user_id):
     db.session.execute(text("DELETE FROM users WHERE user_id=:id"), {"id": user_id})
     db.session.commit()
     return "User deleted (SQL)."
 
+# fetch full user profile
 def get_user_full_details(user_id):
     sql = text("""
         SELECT u.*, s.major, s.enrollment_year, i.department_code, i.title
@@ -262,6 +277,7 @@ def get_user_full_details(user_id):
         }
     return None
 
+# toggle account status
 def toggle_user_status(user_id):
     db.session.execute(text("UPDATE users SET is_active = NOT is_active WHERE user_id=:id"), {"id":user_id})
     db.session.commit()
@@ -271,11 +287,13 @@ def toggle_user_status(user_id):
 #  SQL ENROLLMENT & MISC
 # =====================================================
 
+# enroll student in class
 def enroll_student_in_module(student_id, module_id):
     try:
-        # Check existing
+        # check existing
         exist = db.session.execute(text("SELECT 1 FROM enrollments WHERE student_id=:sid AND module_id=:cid"), {"sid":student_id, "cid":module_id}).first()
-        if exist: raise ValueError("Already enrolled")
+        if exist:
+            raise ValueError("Already enrolled")
         
         db.session.execute(text("INSERT INTO enrollments (student_id, module_id, status) VALUES (:sid, :cid, 'Enrolled')"), {"sid":student_id, "cid":module_id})
         db.session.execute(text("UPDATE modules SET current_enrollment = current_enrollment + 1 WHERE module_id=:cid"), {"cid": module_id})
@@ -285,12 +303,14 @@ def enroll_student_in_module(student_id, module_id):
         db.session.rollback()
         raise ValueError(str(e))
 
+# drop student from class
 def drop_student_enrollment_module(student_id, module_id):
     db.session.execute(text("DELETE FROM enrollments WHERE student_id=:sid AND module_id=:cid"), {"sid":student_id, "cid":module_id})
     db.session.execute(text("UPDATE modules SET current_enrollment = current_enrollment - 1 WHERE module_id=:cid"), {"cid": module_id})
     db.session.commit()
     return "Dropped successfully (SQL)."
 
+# get student enrollments
 def get_student_enrollments(student_id):
     sql = text("""
         SELECT 
@@ -318,26 +338,30 @@ def get_student_enrollments(student_id):
         "academic_term": r.academic_term, 
         "status": r.status, 
         "final_grade": r.final_grade,
-        # Combine names, default to "TBA" if null
+        # combine names, default to "tba"
         "instructor_name": f"{r.first_name} {r.last_name}" if r.first_name else "TBA"
     } for r in rows]
 
+# fetch basic student data
 def get_student_data():
     sql = text("SELECT s.student_id, u.university_id, u.first_name, u.last_name, s.major FROM students s JOIN users u ON s.student_id = u.user_id")
     rows = db.session.execute(sql).all()
     return [{"id": r.student_id, "university_id": r.university_id, "name": f"{r.first_name} {r.last_name}", "major": r.major} for r in rows]
 
+# fetch basic instructor data
 def get_instructor_data():
     sql = text("SELECT i.instructor_id, u.first_name, u.last_name, i.department_code, i.title FROM instructors i JOIN users u ON i.instructor_id = u.user_id")
     rows = db.session.execute(sql).all()
     return [{"id": r.instructor_id, "name": f"{r.first_name} {r.last_name}", "department_code": r.department_code, "title": r.title} for r in rows]
 
+# get basic user list
 def get_user_data():
     rows = db.session.execute(text("SELECT user_id, email, first_name, last_name, role FROM users")).all()
     return [{"id": r.user_id, "email": r.email, "name": f"{r.first_name} {r.last_name}", "role": r.role} for r in rows]
 
+# get specific student details
 def get_student_details_by_user_id(user_id):
-    # Updated query to include 'major_id'
+    # updated query to include 'major_id'
     sql = text("SELECT student_id, enrollment_year, major, major_id FROM students WHERE student_id = :uid")
     student = db.session.execute(sql, {"uid": user_id}).first()
     
@@ -346,23 +370,27 @@ def get_student_details_by_user_id(user_id):
             "id": student.student_id, 
             "enrollment_year": student.enrollment_year, 
             "major": student.major,
-            "major_id": student.major_id # <--- NEW: Return the short code (e.g. 'SE')
+            "major_id": student.major_id  # return the short code (e.g. 'se')
         }
     return None
 
+# get specific instructor details
 def get_instructor_details_by_user_id(uid):
     row = db.session.execute(text("SELECT * FROM instructors WHERE instructor_id=:uid"), {"uid": uid}).first()
     return {"id": row.instructor_id, "department_code": row.department_code, "title": row.title} if row else None
 
+# get modules by instructor
 def get_instructor_modules(iid):
     rows = db.session.execute(text("SELECT * FROM modules WHERE instructor_id=:iid"), {"iid": iid}).all()
     return [{"module_id": r.module_id, "module_name": r.module_name, "current_enrollment": r.current_enrollment, "max_capacity": r.max_capacity} for r in rows]
 
+# fetch class roster
 def get_students_in_module(cid):
     sql = text("SELECT s.student_id, u.first_name, u.last_name, s.major, u.university_id FROM students s JOIN enrollments e ON s.student_id=e.student_id JOIN users u ON s.student_id=u.user_id WHERE e.module_id=:cid")
     rows = db.session.execute(sql, {"cid": cid}).all()
     return [{"id": r.student_id, "name": f"{r.first_name} {r.last_name}", "major": r.major, "university_id": r.university_id} for r in rows]
 
+# search instructors by name
 def get_instructors_by_name(query: str) -> List[Dict[str, Any]]:
     """Search instructors by name (SQL version) with partial matching."""
     query_like = f"%{query}%"
@@ -371,8 +399,8 @@ def get_instructors_by_name(query: str) -> List[Dict[str, Any]]:
         FROM instructors i
         JOIN users u ON i.instructor_id = u.user_id
         WHERE u.first_name LIKE :q
-           OR u.last_name LIKE :q
-           OR CONCAT(u.first_name, ' ', u.last_name) LIKE :q
+            OR u.last_name LIKE :q
+            OR CONCAT(u.first_name, ' ', u.last_name) LIKE :q
     """)
     rows = db.session.execute(sql, {"q": query_like}).all()
     return [
@@ -383,6 +411,8 @@ def get_instructors_by_name(query: str) -> List[Dict[str, Any]]:
             "title": r.title
         }
         for r in rows]
+
+# search instructors within dept
 def get_instructors_by_name_and_dept(query: str) -> List[Dict[str, Any]]:
     """Search instructors by name (SQL version) with dept limit."""
     dept_constr, name_part = map(str.strip, query.split(':', 1))
@@ -408,5 +438,3 @@ def get_instructors_by_name_and_dept(query: str) -> List[Dict[str, Any]]:
         }
         for r in rows
     ]
-
-# All functions are now module-prefixed following full rename

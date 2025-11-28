@@ -1,3 +1,6 @@
+# THIS PYTHON FILE GETS DATA FROM SQL POPULATES MONGODB, 
+# THIS FILE IS NOT MEANT TO BE RAN EVERYTIME
+# AND ALSO GENERATES EMBEDDINGS FOR MODULES AND USERS
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from website import create_app
@@ -77,7 +80,6 @@ def generate_and_store_embeddings():
                 
                 embedding = model.encode(text_to_embed).tolist()
 
-                # ... (Rest of your level/slots calculation logic remains the same) ...
                 
                 # Logic for level extraction
                 module_level = 1000
@@ -148,7 +150,6 @@ def generate_and_store_embeddings():
                         role_descriptor = "Student"
                 
                 elif user.role == 'instructor':
-                    # Use session.query instead of Model.query
                     instructor_info = sql_db.session.query(Instructor).get(user.user_id)
                     if instructor_info:
                         major_or_dept = instructor_info.department_code
