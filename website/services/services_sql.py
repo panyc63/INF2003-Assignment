@@ -348,9 +348,9 @@ def get_student_data():
 
 # fetch basic instructor data
 def get_instructor_data():
-    sql = text("SELECT i.instructor_id, u.first_name, u.last_name, i.department_code, i.title FROM instructors i JOIN users u ON i.instructor_id = u.user_id")
+    sql = text("SELECT i.instructor_id, u.first_name, u.last_name, i.department_code, i.title, i.office_location, i.office_hours FROM instructors i JOIN users u ON i.instructor_id = u.user_id")
     rows = db.session.execute(sql).all()
-    return [{"id": r.instructor_id, "name": f"{r.first_name} {r.last_name}", "department_code": r.department_code, "title": r.title} for r in rows]
+    return [{"id": r.instructor_id, "name": f"{r.first_name} {r.last_name}", "department_code": r.department_code, "title": r.title,"office_location": r.office_location, "title": r.office_hours} for r in rows]
 
 # get basic user list
 def get_user_data():
@@ -393,7 +393,7 @@ def get_instructors_by_name(query: str) -> List[Dict[str, Any]]:
     """Search instructors by name (SQL version) with partial matching."""
     query_like = f"%{query}%"
     sql = text("""
-        SELECT i.instructor_id, u.first_name, u.last_name, i.department_code, i.title
+        SELECT i.instructor_id, u.first_name, u.last_name, i.department_code, i.title, i.office_location, i.office_hours
         FROM instructors i
         JOIN users u ON i.instructor_id = u.user_id
         WHERE u.first_name LIKE :q
@@ -406,7 +406,9 @@ def get_instructors_by_name(query: str) -> List[Dict[str, Any]]:
             "id": r.instructor_id,
             "name": f"{r.first_name} {r.last_name}",
             "department_code": r.department_code,
-            "title": r.title
+            "title": r.title,
+            "office_location": r.office_location,
+            "title": r.office_hours
         }
         for r in rows]
 
@@ -416,7 +418,7 @@ def get_instructors_by_name_and_dept(query: str) -> List[Dict[str, Any]]:
     dept_constr, name_part = map(str.strip, query.split(':', 1))
     query_like = f"%{name_part}%"
     sql = text("""
-        SELECT i.instructor_id, u.first_name, u.last_name, i.department_code, i.title
+        SELECT i.instructor_id, u.first_name, u.last_name, i.department_code, i.title, i.office_location, i.office_hours
         FROM instructors i
         JOIN users u ON i.instructor_id = u.user_id
         WHERE (LOWER(u.first_name) LIKE LOWER(:q)
@@ -432,7 +434,9 @@ def get_instructors_by_name_and_dept(query: str) -> List[Dict[str, Any]]:
             "id": r.instructor_id,
             "name": f"{r.first_name} {r.last_name}",
             "department_code": r.department_code,
-            "title": r.title
+            "title": r.title,
+            "office_location": r.office_location,
+            "title": r.office_hours
         }
         for r in rows
     ]

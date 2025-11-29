@@ -96,7 +96,6 @@
             const instructorTitle = instructor.title;
             const instructorDept = instructor.department_code;
             const officeLoc = instructor.office_location || 'TBA';
-            const officeHour = instructor.office_hours || 'TBA';
 
             container.innerHTML += `
         <div class="col-lg-4 col-md-6 pb-4">
@@ -108,6 +107,7 @@
                     <p class="text-center mb-1"><strong>${instructorName}</strong></p>
                     <p class="text-center mb-1"><strong>${instructorTitle}</strong></p>
                     <p class="text-center mb-1">Dept: ${instructorDept}</p>
+                    <p class="text-center mb-1">Office: ${officeLoc}</p>
                 </div>
             </div>
         </div>
