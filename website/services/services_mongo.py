@@ -554,7 +554,9 @@ def get_instructors_by_name(query: str):
                 "first_name": 1,
                 "last_name": 1,
                 "department_code": "$instructor_details.department_code",
-                "title": "$instructor_details.title"
+                "title": "$instructor_details.title",
+                "office_location": "$instructor_details.office_location",
+                "office_hours": "$instructor_details.office_hours"
             }
         }
     ]
@@ -566,7 +568,9 @@ def get_instructors_by_name(query: str):
             "id": i.get("user_id"),
             "name": f"{i.get('first_name')} {i.get('last_name')}",
             "department_code": i.get("department_code"),
-            "title": i.get("title")
+            "title": i.get("title"),
+            "office_location": i.get("office_location"),
+            "office_hours": i.get("office_hours")
         } 
         for i in instructors
     ]
@@ -615,7 +619,9 @@ def get_instructors_by_name_and_dept(query: str):
                 "first_name": 1,
                 "last_name": 1,
                 "department_code": "$instructor_details.department_code",
-                "title": "$instructor_details.title"
+                "title": "$instructor_details.title",
+                "office_location": "$instructor_details.office_location",
+                "office_hours": "$instructor_details.office_hours"
             }
         }
     ]
@@ -627,7 +633,9 @@ def get_instructors_by_name_and_dept(query: str):
             "id": i.get("user_id"),
             "name": f"{i.get('first_name')} {i.get('last_name')}",
             "department_code": i.get("department_code"),
-            "title": i.get("title")
+            "title": i.get("title"),
+            "office_location": i.get("office_location"),
+            "office_hours": i.get("office_hours")
         } 
         for i in instructors
     ]
