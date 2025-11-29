@@ -46,8 +46,8 @@ def generate_and_store_embeddings():
             Module.max_capacity,
             Module.current_enrollment,
             Module.target_majors,
-            InstructorUser.first_name.label('instr_first'), # <--- Explicit Label
-            InstructorUser.last_name.label('instr_last')    # <--- Explicit Label
+            InstructorUser.first_name.label('instr_first'), 
+            InstructorUser.last_name.label('instr_last')    
         ).outerjoin(Module.instructor)\
          .outerjoin(Instructor.user.of_type(InstructorUser))\
          .all()
@@ -131,7 +131,8 @@ def generate_and_store_embeddings():
 
             # Connect to Mongo Users Collection
             users_collection = mongo.db.users
-            users_collection.delete_many({}) # Clear old data
+            users_collection.delete_many({}) 
+            mongo.db.instructors.delete_many({}) 
 
             user_docs = []
             for user in sql_users:
@@ -153,14 +154,23 @@ def generate_and_store_embeddings():
                     instructor_info = sql_db.session.query(Instructor).get(user.user_id)
                     if instructor_info:
                         major_or_dept = instructor_info.department_code
-                        # Added office_hours to details for context
+
                         details = (
                             f"Title: {instructor_info.title}. "
                             f"Department: {instructor_info.department_code}. "
                             f"Office: {instructor_info.office_location}. "
                             f"Hours: {instructor_info.office_hours}."
                         )
-                        role_descriptor = instructor_info.title # e.g., "Professor"
+                        role_descriptor = instructor_info.title 
+
+              
+                        mongo.db.instructors.insert_one({
+                            "instructor_id": user.user_id,
+                            "department_code": instructor_info.department_code,
+                            "title": instructor_info.title,
+                            "office_location": instructor_info.office_location,
+                            "office_hours": instructor_info.office_hours
+                        })
 
                 # 3. Construct Text to Embed
                 # We use the schema data to create a "Bio-like" string for the AI
@@ -171,14 +181,14 @@ def generate_and_store_embeddings():
 
                 # 5. Create Mongo Document
                 user_doc = {
-                    "user_id": user.user_id, # SQL Primary Key
+                    "user_id": user.user_id, 
                     "university_id": user.university_id,
                     "first_name": user.first_name,
                     "last_name": user.last_name,
                     "email": user.email,
                     "role": user.role,
-                    "info": details, # Store the text details for display
-                    "context_key": major_or_dept, # Store Major or Dept for filtering
+                    "info": details, 
+                    "context_key": major_or_dept, 
                     "embedding": embedding,
                     "type": "user"
                 }

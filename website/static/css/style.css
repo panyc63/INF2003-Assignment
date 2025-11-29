@@ -63,6 +63,16 @@ section {
   display: block;
 }
 
+#instructor-dropdown-menu {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+#module-dropdown-menu {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
 body {
   margin: 0;
   font-family: "Open Sans", sans-serif;
