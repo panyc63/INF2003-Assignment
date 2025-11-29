@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Module Details - Edukate{% endblock %}
+
+{% block content %}
+
+<div id="module-data" data-module-id="{{ module_id }}"></div>
+
+<div class="jumbotron jumbotron-fluid page-header position-relative overlay-bottom" style="margin-bottom: 90px;">
+    <div class="container text-center py-5">
+        <h1 class="text-white display-1" id="module-header-code">Loading...</h1>
+        <div class="d-inline-flex text-white mb-5">
+            <p class="m-0 text-uppercase"><a class="text-white" href="{{ url_for('views.home') }}">Home</a></p>
+            <i class="fa fa-angle-double-right pt-1 px-3"></i>
+            <p class="m-0 text-uppercase"><a class="text-white" href="{{ url_for('views.modules') }}">Modules</a></p>
+            <i class="fa fa-angle-double-right pt-1 px-3"></i>
+            <p class="m-0 text-uppercase" id="breadcrumb-title">...</p>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid py-5">
+    <div class="container py-5">
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="mb-5">
+                    <img class="img-fluid rounded w-100 mb-4" id="module-image" src="{{ url_for('static', filename='img/modules-1.jpg') }}" alt="Module Image">
+                    
+                    <h1 class="mb-3" id="module-title">Loading...</h1>
+                    
+                    <h2 class="mb-4 h4">Module Description</h2>
+                    <p id="module-description">Please wait while we fetch the module information.</p>
+                    
+                    <h3 class="mb-3 mt-5">Prerequisites</h3>
+                    <p id="module-prereqs">...</p>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm" style="position: sticky; top: 20px;">
+                    <div class="card-header bg-white border-0 p-4">
+                        <button onclick="handleEnroll()" id="btn-enroll" class="btn btn-secondary btn-block btn-lg py-3" disabled>Loading...</button>
+                    </div>
+                    
+                    <div class="card-body p-4">
+                        <h4 class="mb-3">Module Details</h4>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <span class="font-weight-bold">Instructor</span>
+                                <span id="module-instructor">...</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <span class="font-weight-bold">Module Code</span>
+                                <span id="module-code">...</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <span class="font-weight-bold">Credits</span>
+                                <span id="module-credits">...</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <span class="font-weight-bold">Term</span>
+                                <span id="module-term">...</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <span class="font-weight-bold">Capacity</span>
+                                <span id="module-capacity">...</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="card-footer bg-white border-0 p-4">
+                        <h5 class="mb-3">Enrollment Status</h5>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Slots Left</span>
+                            <strong id="module-slots-left">...</strong>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-secondary" role="progressbar" id="module-progress-bar"
+                                 style="width: 0%;" aria-valuemin="0" aria-valuemax="100">
+                            </div>
+                        </div>
+                        <small class="text-muted" id="module-slots-filled">... of ... slots filled</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentModuleData = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Get ID from data attribute (No Jinja errors)
+        const dataElement = document.getElementById('module-data');
+        const moduleId = dataElement ? dataElement.dataset.moduleId : null;
+        
+        if(moduleId) populateModuleData(moduleId);
+    });
+
+    async function populateModuleData(id) {
+        try {
+            // 1. Build URL with student_id if logged in
+            let url = `/api/modules/${id}`;
+            if (currentState.loggedIn && currentState.studentId) {
+                url += `?student_id=${currentState.studentId}`;
+            }
+
+            const module = await apiFetch(url);
+            currentModuleData = module;
+
+            if (!module || module.error) {
+                document.getElementById('module-title').innerText = "Module not found.";
+                return;
+            }
+
+            // --- Update Text ---
+            document.title = `${module.module_name} - Edukate`;
+            document.getElementById('module-header-code').innerText = module.module_id;
+            document.getElementById('breadcrumb-title').innerText = module.module_name;
+            document.getElementById('module-title').innerText = module.module_name;
+            document.getElementById('module-description').innerText = module.description || "No description available.";
+            
+            // Prerequisites
+            const prereqs = module.prerequisites;
+            document.getElementById('module-prereqs').innerText = (prereqs && prereqs !== 'None') 
+                ? `Requires: ${prereqs}`
+                : "No prerequisites required.";
+
+            // Sidebar
+            document.getElementById('module-instructor').innerText = module.instructor_name;
+            document.getElementById('module-code').innerText = module.module_id;
+            document.getElementById('module-credits').innerText = module.credits;
+            document.getElementById('module-term').innerText = module.academic_term;
+            document.getElementById('module-capacity').innerText = `${module.max_capacity} Students`;
+
+            // Stats
+            const current = module.current_enrollment;
+            const max = module.max_capacity;
+            const left = module.slots_left;
+            
+            document.getElementById('module-slots-left').innerText = left;
+            document.getElementById('module-slots-filled').innerText = `${current} of ${max} slots filled`;
+
+            const percent = max > 0 ? Math.min((current / max) * 100, 100) : 0;
+            const progressBar = document.getElementById('module-progress-bar');
+            progressBar.style.width = `${percent}%`;
+            
+            // --- BUTTON LOGIC (Crucial Part) ---
+            const btn = document.getElementById('btn-enroll');
+            
+            // Check if user is already enrolled
+            if (module.student_status === 'Enrolled') {
+                btn.innerText = "Already Enrolled";
+                btn.disabled = true;
+                btn.className = "btn btn-success btn-block btn-lg py-3"; // Green button
+                btn.innerHTML = '<i class="fa fa-check mr-2"></i> Enrolled';
+            } 
+            else if (module.student_status === 'Completed') {
+                btn.innerText = "Module Completed";
+                btn.disabled = true;
+                btn.className = "btn btn-info btn-block btn-lg py-3"; // Blue button
+            }
+            else if (left <= 0) {
+                btn.innerText = "Module Full";
+                btn.disabled = true;
+                btn.className = "btn btn-danger btn-block btn-lg py-3";
+            } 
+            else {
+                btn.innerText = "Enroll Now";
+                btn.disabled = false;
+                btn.className = "btn btn-secondary btn-block btn-lg py-3";
+            }
+
+        } catch (error) {
+            console.error("Error:", error);
+            document.getElementById('module-title').innerText = "Error loading data.";
+        }
+    }
+
+    async function handleEnroll() {
+        // Auth Check
+        if (!currentState.loggedIn) {
+            window.location.href = '/login';
+            return;
+        }
+        // Role Check
+        if (currentState.userRole !== 'student') {
+            alert("Only students can enroll.");
+            return;
+        }
+
+        if(!confirm(`Confirm enrollment in ${currentModuleData.module_id}?`)) return;
+
+        try {
+            const payload = {
+                student_id: currentState.studentId,
+                module_id: currentModuleData.module_id
+            };
+            
+            const response = await apiFetch('/api/enroll', {
+                method: 'POST',
+                body: payload
+            });
+
+            alert(response.message || "Success!");
+            populateModuleData(currentModuleData.module_id); // Refresh UI
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+</script>
+{% endblock %}
