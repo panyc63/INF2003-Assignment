@@ -7,7 +7,7 @@ _embedding_model = None
 def get_model():
     global _embedding_model
     if _embedding_model is None:
-        print("⏳ Loading AI Model (First Run Only)...")
+        print("Loading AI Model (First Run Only)...")
         from sentence_transformers import SentenceTransformer
         _embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
     return _embedding_model
