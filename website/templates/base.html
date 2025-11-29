@@ -99,7 +99,7 @@
                         navHtml += `<a href="/modules" class="nav-link">Modules</a>`;
                         navHtml += `<a href="/instructor_dashboard" class="nav-link">Dashboard</a>`;
                     } else if (currentState.userRole === 'admin') {
-                        navHtml = `<a href="/admin_dashboard" class="nav-link" style="color: #4f46e5;">Admin</a>`;
+                        navHtml = `<a href="/admin_dashboard" class="nav-link">Admin</a>`;
                         navHtml += `<a href="/admin/modules" class="nav-link">Manage Modules</a>`;
                         navHtml += `<a href="/admin/users" class="nav-link">Manage Users</a>`;
                     }
@@ -112,6 +112,17 @@
                 }
 
                 navContainer.innerHTML = navHtml;
+
+                const nav_links = document.querySelectorAll('.nav-link');
+                const current_path = window.location.pathname;
+
+                nav_links.forEach(nav_link => {
+                    if (nav_link.getAttribute('href') === current_path) {
+                        nav_link.classList.add('text-blue-600');
+                    } else {
+                        nav_link.classList.add('hover:text-blue-400');
+                    }
+                });
             }
 
             // 4. Redirect Logic (Protect Routes)
