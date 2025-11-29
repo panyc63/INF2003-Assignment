@@ -213,7 +213,7 @@
                 } else if (!has_alphabets_a && has_alphabets_b) {
                     return -1;
                 } else if (has_alphabets_a && has_alphabets_b) {
-                    return a.university_id.localeCompare(b.user_id);
+                    return a.university_id.localeCompare(b.university_id);
                 } else {
                     return parseInt(a.university_id) - parseInt(b.university_id);
                 }
