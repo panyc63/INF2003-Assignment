@@ -220,54 +220,111 @@
     function extractFilters(query) {
         let targetYear = null;
         let targetTri = null;
+
+        // 1. Pre-process: Normalize to lowercase
         let processed = query.toLowerCase();
-        
+
+        // 2. Helper: Convert Words to Numbers
+        // Includes "Final Year" common in SIT context
         const wordMap = {
             'one': '1', 'two': '2', 'three': '3', 'four': '4',
             'first': '1', 'second': '2', 'third': '3', 'fourth': '4',
-            'freshman': '1', 'sophomore': '2', 'junior': '3', 'senior': '4'
+            'freshman': '1', 'freshie': '1', // SIT Slang
+            'sophomore': '2',
+            'junior': '3',
+            'senior': '4', 'final year': '4'
         };
+
+        // Replace number words with digits safely (word boundary check)
         for (const [word, num] of Object.entries(wordMap)) {
             processed = processed.replace(new RegExp(`\\b${word}\\b`, 'g'), num);
         }
 
-        processed = processed.replace(/\b(fall|sep|september)\b/g, 't1');
-        processed = processed.replace(/\b(spring|jan|january)\b/g, 't2');
-        processed = processed.replace(/\b(summer|may)\b/g, 't3');
-        processed = processed.replace(/\b(year|yr)\b/g, 'y');
-        processed = processed.replace(/\b(trimester|tri|term|sem|semester)\b/g, 't');
+        // 3. SIT Academic Calendar Mapping (Months/Seasons -> Trimesters)
+        // T1: Sep-Dec | T2: Jan-Apr | T3: May-Aug
+        const triMap = {
+            't1': ['fall', 'sep', 'september', 'oct', 'october', 'nov', 'november', 'dec', 'december'],
+            't2': ['spring', 'jan', 'january', 'feb', 'february', 'mar', 'march', 'apr', 'april'],
+            't3': ['summer', 'may', 'jun', 'june', 'jul', 'july', 'aug', 'august']
+        };
+
+        for (const [tri, keywords] of Object.entries(triMap)) {
+            const pattern = new RegExp(`\\b(${keywords.join('|')})\\b`, 'g');
+            processed = processed.replace(pattern, tri); // Replace months with 't1', 't2', 't3'
+        }
+
+        // 4. Regex Patterns for Year/Tri Extraction
+
+        // Pattern A: Tight codes (e.g., "y1t1", "y3t2")
+        const tightCodeRegex = /\by(\d)t(\d)\b/;
+
+        // Pattern B: Verbose "Year X Trimester Y" (handles "Sem", "Tri", "Term")
+        const yearFirstRegex = /\by(?:ear|r)?\s*(\d)\s*(?:trimester|tri|term|sem|semester|t)\s*(\d)\b/;
         
-        const combinedMatch = processed.match(/y\s*(\d)\s*t\s*(\d)|t\s*(\d)\s*y\s*(\d)/);
-        if (combinedMatch) {
-            if (combinedMatch[1]) {
-                targetYear = parseInt(combinedMatch[1]);
-                targetTri = parseInt(combinedMatch[2]);
-            } else {
-                targetTri = parseInt(combinedMatch[3]);
-                targetYear = parseInt(combinedMatch[4]);
-            }
-        } else {
-            const yearMatch = processed.match(/y\s*(\d)/);
-            const triMatch = processed.match(/t\s*(\d)/);
-            if (yearMatch) targetYear = parseInt(yearMatch[1]);
-            if (triMatch) targetTri = parseInt(triMatch[1]);
-            if (!targetYear) {
-                const levelMatch = processed.match(/(\d)000/);
-                if (levelMatch) targetYear = parseInt(levelMatch[1]);
+        const triFirstRegex = /\b(?:trimester|tri|term|sem|semester|t)\s*(\d)\s*y(?:ear|r)?\s*(\d)\b/;
+        const yearOnlyRegex = /\by(?:ear|r)?\s*(\d)\b/;
+        const triOnlyRegex = /\b(?:trimester|tri|term|sem|semester|t)\s*(\d)\b/;
+        const levelRegex = /\b(\d)000\b/;
+
+
+        let match;
+
+        if ((match = processed.match(tightCodeRegex))) {
+            targetYear = parseInt(match[1]);
+            targetTri = parseInt(match[2]);
+        }
+        else if ((match = processed.match(yearFirstRegex))) {
+            targetYear = parseInt(match[1]);
+            targetTri = parseInt(match[2]);
+        }
+        else if ((match = processed.match(triFirstRegex))) {
+            targetTri = parseInt(match[1]);
+            targetYear = parseInt(match[2]);
+        }
+        else {
+            // Look for independent Year/Tri
+            const yMatch = processed.match(yearOnlyRegex);
+            const tMatch = processed.match(triOnlyRegex);
+            const lMatch = processed.match(levelRegex);
+
+            if (yMatch) targetYear = parseInt(yMatch[1]);
+            if (tMatch) targetTri = parseInt(tMatch[1]);
+
+            // Fallback: If no year found, check for "1000/2000" syntax
+            if (!targetYear && lMatch) {
+                targetYear = parseInt(lMatch[1]);
             }
         }
 
-        let cleanedQuery = query;
-        cleanedQuery = cleanedQuery.replace(/y(ear|r)?\s?(\d|one|two|three|four|first|second|third|fourth)/gi, '');
-        cleanedQuery = cleanedQuery.replace(/t(ri(mester)?|erm|sem(ester)?)?\s?(\d|one|two|three)/gi, '');
-        cleanedQuery = cleanedQuery.replace(/fall|spring|summer|sep|jan|may/gi, '');
-        cleanedQuery = cleanedQuery.replace(/y\d\s?t\d/gi, '');
-        cleanedQuery = cleanedQuery.replace(/\b(my|courses|course|modules|module|classes|class|in|by|for|of|schedule|enrolled|completed)\b/gi, '');
+        // 6. Cleanup Query
+        // Remove the detected constraints so the search string is clean
+        let cleanedQuery = query; // Start with original query to preserve casing of other words
+
+        // Helper to remove patterns case-insensitively
+        const removePattern = (regex) => {
+            cleanedQuery = cleanedQuery.replace(new RegExp(regex, 'gi'), '');
+        };
+
+        // Remove specific patterns found in Step 4
+        removePattern(/y(\d)t(\d)/); // y1t1
+        removePattern(/y(ear|r)?\s*(\d|one|two|three|four|first|second|third|fourth)/); // Year X
+        removePattern(/(trimester|tri|term|sem|semester|t)\s*(\d|one|two|three)/); // Tri X
+        removePattern(/\b(fall|spring|summer|sep|september|jan|january|may)\b/); // Seasons/Months
+
+        // Remove filler words common in student queries
+        const fillerWords = [
+            'my', 'courses', 'course', 'modules', 'module', 'mod',
+            'classes', 'class', 'in', 'by', 'for', 'of',
+            'schedule', 'enrolled', 'completed', 'taking', 'plan'
+        ];
+        removePattern(`\\b(${fillerWords.join('|')})\\b`);
+
+        // Final trim
         cleanedQuery = cleanedQuery.replace(/\s+/g, ' ').trim();
 
         return { targetYear, targetTri, cleanedQuery };
     }
-
+    
     async function handleModuleSearch(event) {
         event.preventDefault();
         const rawQuery = document.getElementById('search-query').value;

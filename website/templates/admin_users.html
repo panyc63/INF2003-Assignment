@@ -25,7 +25,7 @@
                     class="pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm text-sm w-full cursor-pointer bg-white">
                     <option value="name_asc">Name (A-Z)</option>
                     <option value="role">Role</option>
-                    <option value="user_id">User ID</option>
+                    <option value="id_newest">ID (Newest)</option>
                 </select>
             </div>
 
@@ -41,10 +41,10 @@
             Page <span class="font-bold text-gray-900" id="curr-page-num">1</span> of <span class="font-bold text-gray-900" id="total-pages">1</span>
         </p>
         <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-            <button id="btn-prev" onclick="changePage(-1)" class="relative inline-flex items-center px-3 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+            <button id="btn-prev" onclick="changePage(-1)" class="relative inline-flex items-center px-3 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed">
                 Prev
             </button>
-            <button id="btn-next" onclick="changePage(1)" class="relative inline-flex items-center px-3 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+            <button id="btn-next" onclick="changePage(1)" class="relative inline-flex items-center px-3 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed">
                 Next
             </button>
         </nav>
@@ -204,20 +204,7 @@
         temp.sort((a, b) => {
             if (sortVal === 'name_asc') return a.name.localeCompare(b.name);
             if (sortVal === 'role') return a.role.localeCompare(b.role);
-            if (sortVal === 'user_id') {
-                let has_alphabets_a = /[a-z]/i.test(a.university_id);
-                let has_alphabets_b = /[a-z]/i.test(b.university_id);
-
-                if (has_alphabets_a && !has_alphabets_b) {
-                    return 1;
-                } else if (!has_alphabets_a && has_alphabets_b) {
-                    return -1;
-                } else if (has_alphabets_a && has_alphabets_b) {
-                    return a.university_id.localeCompare(b.university_id);
-                } else {
-                    return parseInt(a.university_id) - parseInt(b.university_id);
-                }
-            }
+            if (sortVal === 'id_newest') return b.user_id - a.user_id; // Assuming auto-inc ID
             return 0;
         });
 
