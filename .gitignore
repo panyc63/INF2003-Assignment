@@ -1,6 +1,7 @@
 # 1. Virtual Environment
 # This is the most important one. Never commit your venv!
 /venv/
+.venv/
 
 # 2. Standard Python Cache
 # This will ignore all __pycache__ folders and .pyc files
