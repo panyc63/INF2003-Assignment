@@ -43,15 +43,18 @@ UCMS-University Course Management System is a modern, full-stack web application
 ### 1. Clone the Repository
 ```bash
 git clone https://github.com/panyc63/INF2003-Assignment.git
-cd edukate
 ```
-
-### 2. Install Dependencies
+### 2. Create virtual environment and activate it
+```bash
+python3 -m venv .venv
+\.venv\Scripts\activate.bat
+```
+### 3. Install Dependencies (Will take a few minutes)
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Configure Environment
+### 4. Configure Environment
 If you wish to use the original cloud service, you do not need to change anything.
 If you wish to use your own database, create a `.env` file or update `config.py` with your database credentials:
 ```python
@@ -60,7 +63,7 @@ SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://user:password@localhost/inf2003_db'
 MONGO_URI = 'mongodb+srv://<user>:<password>@cluster.mongodb.net/inf2003_db'
 ```
 
-### 4. Initialize Databases
+### 5. Initialize Databases
 Do not need to run this if using cloud server
 (Only if using local servers) Run the initialization script to populate MongoDB and generate embeddings for MongoDB:
 ```bash
@@ -68,7 +71,7 @@ python generate_vectors.py
 ```
 Populate MySQL with the providede script.
 
-### 5. Run the Application
+### 6. Run the Application
 ```bash
 python run.py
 ```
