@@ -43,6 +43,7 @@ UCMS-University Course Management System is a modern, full-stack web application
 ### 1. Clone the Repository
 ```bash
 git clone https://github.com/panyc63/INF2003-Assignment.git
+cd INF2003-Assignment
 ```
 ### 2. Create virtual environment and activate it
 ```bash
