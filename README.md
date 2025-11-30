@@ -47,7 +47,7 @@ cd INF2003-Assignment
 ```
 ### 2. Create virtual environment and activate it
 ```bash
-python3 -m venv .venv
+python -m venv .venv
 \.venv\Scripts\activate.bat
 ```
 ### 3. Install Dependencies (Will take a few minutes)
