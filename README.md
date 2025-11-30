@@ -48,9 +48,9 @@ cd INF2003-Assignment
 ### 2. Create virtual environment and activate it
 ```bash
 python -m venv .venv
-\.venv\Scripts\activate.bat
+.venv\Scripts\activate.bat
 ```
-### 3. Install Dependencies (Will take a few minutes)
+### 3. Install Dependencies (It will take a while to to sentence-transformers library)
 ```bash
 pip install -r requirements.txt
 ```
